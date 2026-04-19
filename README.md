@@ -14,7 +14,6 @@ A comprehensive TypeScript library implementing the complete game logic for back
 ## Table of Contents
 
 - [Features](#features)
-- [What's New in v4.6](#whats-new-in-v46)
 - [Architecture](#architecture)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
@@ -50,33 +49,6 @@ A comprehensive TypeScript library implementing the complete game logic for back
 - **Position Reconstruction** - Reconstruct board states from move history
 
 - **TypeScript First** - Full type safety with exported types from `@nodots-llc/backgammon-types`
-
----
-
-## What's New in v4.6
-
-### XG Parser
-- Parse eXtreme Gammon `.xg` and `.txt` match export files
-- Extract player metadata (names, Elo ratings, match length)
-- Reconstruct complete game histories with move-by-move board states
-- Generate GNU Position IDs for each position
-
-### Enhanced Position ID System
-- Golden Rule compliance: position IDs now use player-directional encoding
-- Consistent encoding regardless of player color or direction
-- Improved compatibility with GNU Backgammon analysis tools
-
-### Gammon/Backgammon Detection
-- Proper detection of gammon (2x) and backgammon (3x) wins
-- Scoring considers checker positions on bar and in winner's home board
-
-### Constrained Doubles Handling
-- Improved move sanitization for doubles when moves are blocked
-- Automatic detection and handling of "no-move" scenarios
-
-### Bar-First Enforcement
-- Checkers on bar must be moved first before any other moves
-- Proper `movableCheckers` filtering for bar-entry situations
 
 ---
 
