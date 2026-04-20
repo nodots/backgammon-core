@@ -5,9 +5,9 @@
 ![Lines](https://img.shields.io/badge/Lines-82%25-green?style=flat-square)
 <!-- COVERAGE-END -->
 
-# @nodots-llc/backgammon-core
+# @nodots/backgammon-core
 
-**Version 4.6.4** | Core game logic for Nodots Backgammon
+**Version 1.0.0** | Core game logic for Nodots Backgammon
 
 A comprehensive TypeScript library implementing the complete game logic for backgammon. This package provides all the core mechanics needed to build backgammon applications, including board management, move validation, state machine management, robot player support, XG game parsing, and full compliance with official backgammon rules.
 
@@ -48,7 +48,7 @@ A comprehensive TypeScript library implementing the complete game logic for back
 
 - **Position Reconstruction** - Reconstruct board states from move history
 
-- **TypeScript First** - Full type safety with exported types from `@nodots-llc/backgammon-types`
+- **TypeScript First** - Full type safety with exported types from `@nodots/backgammon-types`
 
 ---
 
@@ -56,7 +56,7 @@ A comprehensive TypeScript library implementing the complete game logic for back
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                        @nodots-llc/backgammon-core                      │
+│                        @nodots/backgammon-core                      │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
 │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                 │
@@ -131,7 +131,7 @@ src/
 ## Installation
 
 ```bash
-npm install @nodots-llc/backgammon-core
+npm install @nodots/backgammon-core
 ```
 
 ### Requirements
@@ -145,7 +145,7 @@ npm install @nodots-llc/backgammon-core
 ## Quick Start
 
 ```typescript
-import { Game, Board, ascii } from '@nodots-llc/backgammon-core'
+import { Game, Board, ascii } from '@nodots/backgammon-core'
 
 // Create a new game
 let game = Game.createNewGame(
@@ -291,7 +291,7 @@ Board.getCheckers(board)
 Parse eXtreme Gammon match files:
 
 ```typescript
-import { parseXGFile } from '@nodots-llc/backgammon-core'
+import { parseXGFile } from '@nodots/backgammon-core'
 
 const matchData = parseXGFile(xgFileContent)
 
@@ -317,7 +317,7 @@ for (const game of matchData.games) {
 Generate GNU Backgammon-compatible position IDs:
 
 ```typescript
-import { generatePositionId, parsePositionId } from '@nodots-llc/backgammon-core'
+import { generatePositionId, parsePositionId } from '@nodots/backgammon-core'
 
 // Generate from board state
 const positionId = generatePositionId(board, activePlayer)
