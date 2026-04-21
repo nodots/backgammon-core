@@ -2235,6 +2235,7 @@ export class Game {
           value: undefined,
           owner: undefined,
           offeredBy: undefined,
+          offeredThisTurnBy: undefined,
         }
       : {
           ...game.cube,
@@ -2244,6 +2245,7 @@ export class Game {
             : undefined) as typeof game.cube.value,
           owner: game.cube.owner,
           offeredBy: undefined,
+          offeredThisTurnBy: undefined,
         }
 
     logger.info(
