@@ -21,11 +21,16 @@ describe('Game.moveAndFinalize()', () => {
   it("transitions to 'moved' when only one die is usable (6 blocked, 1 used)", () => {
     // Board setup for counterclockwise (black) player:
     // - Black checker at CC 24
-    // - CC 23 empty (die 1 is legal)
-    // - CC 18 has two white checkers (die 6 is blocked)
+    // - CC 23 empty (die 1 is legal: CC 24 → CC 23)
+    // - CC 18 has two white checkers (blocks die 6 from CC 24)
+    // - CC 17 has two white checkers (blocks die 6 from CC 23,
+    //   i.e. even after die 1 is played, die 6 has no legal
+    //   destination from the new position — only then is die 6
+    //   truly "blocked" and the turn should auto-complete).
     const boardImport: BackgammonCheckerContainerImport[] = [
       pointCC(24, 1, 'black'), // origin
-      pointCC(18, 2, 'white'), // block die 6 destination
+      pointCC(18, 2, 'white'), // block die 6 from CC 24
+      pointCC(17, 2, 'white'), // block die 6 from CC 23 (after die 1)
       // leave 23 empty so die 1 is usable
     ]
 

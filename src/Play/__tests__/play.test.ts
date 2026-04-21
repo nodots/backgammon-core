@@ -95,7 +95,9 @@ describe('Play', () => {
     test('should handle doubles correctly', () => {
       const board = createTestBoard()
       const inactiveDice = Dice.initialize('white') as BackgammonDiceInactive
-      jest.spyOn(Math, 'random').mockReturnValue(0) // This will make both dice roll 1
+      // Mock Dice.rollDie (not Math.random): the primitive moved to
+      // crypto.randomInt in 846c15f, so a Math.random mock is now a no-op.
+      const rollDieSpy = jest.spyOn(Dice, 'rollDie').mockReturnValue(1)
       const player = Player.initialize(
         'white',
         'clockwise',
@@ -121,7 +123,7 @@ describe('Play', () => {
         '\nASCII board after successful doubles test:\n' +
           Board.getAsciiBoard(board)
       )
-      jest.spyOn(Math, 'random').mockRestore()
+      rollDieSpy.mockRestore()
     })
 
     // test('should handle no possible moves', () => {
