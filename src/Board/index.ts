@@ -25,6 +25,18 @@ import {
   getPossibleMovesWithPositionSpecificAutoSwitch,
 } from './methods/getPossibleMoves'
 export { exportToGnuPositionId } from './gnuPositionId'
+export { decodePositionId, type DecodedGnuBoard } from './decodePositionId'
+export { importFromDecoded } from './importFromDecoded'
+export { fromPositionId } from './fromPositionId'
+export { calculatePipCount } from './pipCount'
+export {
+  fromGnuFrame,
+  toGnuFrame,
+  classifyRegion,
+  opponentOf,
+  type BoardRegion,
+  type OnRollContext,
+} from './frame'
 
 export const BOARD_POINT_COUNT = 24
 
