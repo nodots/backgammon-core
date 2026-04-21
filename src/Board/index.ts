@@ -33,7 +33,6 @@ export {
   fromGnuFrame,
   toGnuFrame,
   classifyRegion,
-  opponentOf,
   type BoardRegion,
   type OnRollContext,
 } from './frame'

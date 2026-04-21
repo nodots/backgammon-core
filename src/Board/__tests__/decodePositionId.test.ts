@@ -18,21 +18,21 @@ describe('decodePositionId', () => {
 
   it('returns two 25-entry arrays for a valid id', () => {
     const decoded = decodePositionId(STARTING_POSITION_ID)
-    expect(decoded.x).toHaveLength(25)
-    expect(decoded.o).toHaveLength(25)
+    expect(decoded.opponent).toHaveLength(25)
+    expect(decoded.onRoll).toHaveLength(25)
   })
 
   it('starting position puts 15 checkers on each tan array', () => {
     const decoded = decodePositionId(STARTING_POSITION_ID)
     const total = (arr: number[]) => arr.reduce((s, n) => s + n, 0)
-    expect(total(decoded.x)).toBe(15)
-    expect(total(decoded.o)).toBe(15)
+    expect(total(decoded.opponent)).toBe(15)
+    expect(total(decoded.onRoll)).toBe(15)
   })
 
   it('starting position has checker counts at points 6, 8, 13, 24 (2/3/5/5)', () => {
     const decoded = decodePositionId(STARTING_POSITION_ID)
     // Both tan arrays are symmetric at the starting position.
-    for (const tan of [decoded.x, decoded.o]) {
+    for (const tan of [decoded.opponent, decoded.onRoll]) {
       expect(tan[5]).toBe(5) // point 6
       expect(tan[7]).toBe(3) // point 8
       expect(tan[12]).toBe(5) // point 13
@@ -43,18 +43,18 @@ describe('decodePositionId', () => {
 })
 
 describe('importFromDecoded', () => {
-  it('maps x onto the opponent and o onto the on-roll player', () => {
+  it('maps decoded.opponent and decoded.onRoll onto the right players', () => {
     const decoded: DecodedGnuBoard = {
-      x: new Array(25).fill(0),
-      o: new Array(25).fill(0),
+      opponent: new Array(25).fill(0),
+      onRoll: new Array(25).fill(0),
     }
-    decoded.x[0] = 1 // opponent at opponent's point 1
-    decoded.o[0] = 1 // on-roll at on-roll's point 1
-    decoded.x[5] = 14
-    decoded.o[5] = 14
+    decoded.opponent[0] = 1 // opponent at opponent's point 1
+    decoded.onRoll[0] = 1 // on-roll at on-roll's point 1
+    decoded.opponent[5] = 14
+    decoded.onRoll[5] = 14
 
     const imports = importFromDecoded(decoded, WHITE_CW)
-    // On-roll = white/clockwise: o[0] → clockwise 1, color white.
+    // On-roll = white/clockwise: onRoll[0] → clockwise 1, color white.
     const onRollFirst = imports.find(
       (cc) =>
         typeof cc.position === 'object' &&
@@ -65,8 +65,9 @@ describe('importFromDecoded', () => {
     )
     expect(onRollFirst).toBeDefined()
 
-    // Opponent = black/counterclockwise: x[0] at opponent point 1 in
-    // counterclockwise direction → counterclockwise 1 = clockwise 24.
+    // Opponent = black/counterclockwise: opponent[0] at opponent
+    // point 1 in counterclockwise direction → counterclockwise 1 =
+    // clockwise 24.
     const opponentFirst = imports.find(
       (cc) =>
         typeof cc.position === 'object' &&
@@ -80,16 +81,16 @@ describe('importFromDecoded', () => {
 
   it('flips placement when on-roll is black/counterclockwise', () => {
     const decoded: DecodedGnuBoard = {
-      x: new Array(25).fill(0),
-      o: new Array(25).fill(0),
+      opponent: new Array(25).fill(0),
+      onRoll: new Array(25).fill(0),
     }
-    decoded.o[0] = 1 // on-roll at on-roll's point 1
-    decoded.x[0] = 1 // opponent at opponent's point 1
-    decoded.o[5] = 14
-    decoded.x[5] = 14
+    decoded.onRoll[0] = 1 // on-roll at on-roll's point 1
+    decoded.opponent[0] = 1 // opponent at opponent's point 1
+    decoded.onRoll[5] = 14
+    decoded.opponent[5] = 14
 
     const imports = importFromDecoded(decoded, BLACK_CCW)
-    // On-roll = black/counterclockwise: o[0] → counterclockwise 1 = clockwise 24.
+    // On-roll = black/counterclockwise: onRoll[0] → counterclockwise 1 = clockwise 24.
     const onRollFirst = imports.find(
       (cc) =>
         typeof cc.position === 'object' &&
@@ -100,7 +101,7 @@ describe('importFromDecoded', () => {
     )
     expect(onRollFirst).toBeDefined()
 
-    // Opponent = white/clockwise: x[0] → clockwise 1, color white.
+    // Opponent = white/clockwise: opponent[0] → clockwise 1, color white.
     const opponentFirst = imports.find(
       (cc) =>
         typeof cc.position === 'object' &&
@@ -114,12 +115,12 @@ describe('importFromDecoded', () => {
 
   it('places bar checkers on the correct direction container', () => {
     const decoded: DecodedGnuBoard = {
-      x: new Array(25).fill(0),
-      o: new Array(25).fill(0),
+      opponent: new Array(25).fill(0),
+      onRoll: new Array(25).fill(0),
     }
-    decoded.o[24] = 2 // on-roll on bar
-    decoded.o[5] = 13
-    decoded.x[5] = 15
+    decoded.onRoll[24] = 2 // on-roll on bar
+    decoded.onRoll[5] = 13
+    decoded.opponent[5] = 15
 
     const imports = importFromDecoded(decoded, WHITE_CW)
     const bar = imports.find(
@@ -133,11 +134,11 @@ describe('importFromDecoded', () => {
 
   it('emits off containers when a player has borne off', () => {
     const decoded: DecodedGnuBoard = {
-      x: new Array(25).fill(0),
-      o: new Array(25).fill(0),
+      opponent: new Array(25).fill(0),
+      onRoll: new Array(25).fill(0),
     }
-    decoded.o[5] = 10 // 10 on-roll on point 6 → 5 off
-    decoded.x[5] = 15 // opponent full on point 6
+    decoded.onRoll[5] = 10 // 10 on-roll on point 6 → 5 off
+    decoded.opponent[5] = 15 // opponent full on point 6
 
     const imports = importFromDecoded(decoded, WHITE_CW)
     const off = imports.find(

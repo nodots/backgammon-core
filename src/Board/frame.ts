@@ -70,9 +70,10 @@ export function toGnuFrame(
 }
 
 /**
- * Classify a point in the GNU on-roll frame as a board region from
- * the on-roll player's perspective. Preserves the bucket names the
- * API already uses for PR/stats aggregation.
+ * Classify a 1-24 point number as a board region from the point
+ * owner's perspective. Direction-invariant: callers must pre-translate
+ * into the owner's direction frame before calling (use fromGnuFrame
+ * / toGnuFrame for that).
  *
  *   1-3   = bearingOff
  *   4-6   = homeInner
@@ -83,16 +84,9 @@ export function toGnuFrame(
  *   0     = off
  *   25    = bar
  *
- * Replaces the point-only classifier that lived in
- * api/src/utils/pr-extraction.ts. The `onRoll` arg is part of the
- * signature for forward compatibility and self-documentation: region
- * names are expressed in the on-roll player's frame, and callers must
- * pre-translate into the on-roll frame before calling.
+ * Replaces the classifier that lived in api/src/utils/pr-extraction.ts.
  */
-export function classifyRegion(
-  point: number | string,
-  _onRoll: Pick<OnRollContext, 'direction'>
-): BoardRegion {
+export function classifyRegion(point: number | string): BoardRegion {
   if (point === 'bar' || point === BAR) return 'bar'
   if (point === 'off' || point === OFF) return 'off'
 
@@ -109,9 +103,9 @@ export function classifyRegion(
   return 'outerBoard'
 }
 
-/**
- * Given an on-roll color, return the opposing color.
- */
+// Internal helper: given an on-roll color/direction, return the
+// opposing player's color/direction. Not exported — callers can
+// compute this themselves if they need it.
 export function opponentOf(ctx: OnRollContext): OnRollContext {
   return {
     color: ctx.color === 'white' ? 'black' : 'white',

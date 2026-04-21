@@ -1,10 +1,5 @@
 import { describe, expect, it } from '@jest/globals'
-import {
-  classifyRegion,
-  fromGnuFrame,
-  opponentOf,
-  toGnuFrame,
-} from '../frame'
+import { classifyRegion, fromGnuFrame, toGnuFrame } from '../frame'
 
 describe('fromGnuFrame / toGnuFrame', () => {
   it('passes through 0 (off) and 25 (bar) regardless of direction', () => {
@@ -41,73 +36,53 @@ describe('fromGnuFrame / toGnuFrame', () => {
 })
 
 describe('classifyRegion', () => {
-  const ctx = { direction: 'clockwise' as const }
-
   it('returns "bar" for 25 and the string "bar"', () => {
-    expect(classifyRegion(25, ctx)).toBe('bar')
-    expect(classifyRegion('bar', ctx)).toBe('bar')
+    expect(classifyRegion(25)).toBe('bar')
+    expect(classifyRegion('bar')).toBe('bar')
   })
 
   it('returns "off" for 0 and the string "off"', () => {
-    expect(classifyRegion(0, ctx)).toBe('off')
-    expect(classifyRegion('off', ctx)).toBe('off')
+    expect(classifyRegion(0)).toBe('off')
+    expect(classifyRegion('off')).toBe('off')
   })
 
   it('classifies 1-3 as bearingOff', () => {
-    for (const p of [1, 2, 3]) expect(classifyRegion(p, ctx)).toBe('bearingOff')
+    for (const p of [1, 2, 3]) expect(classifyRegion(p)).toBe('bearingOff')
   })
 
   it('classifies 4-6 as homeInner', () => {
-    for (const p of [4, 5, 6]) expect(classifyRegion(p, ctx)).toBe('homeInner')
+    for (const p of [4, 5, 6]) expect(classifyRegion(p)).toBe('homeInner')
   })
 
   it('classifies 7-12 as outerBoard', () => {
-    for (let p = 7; p <= 12; p++) expect(classifyRegion(p, ctx)).toBe('outerBoard')
+    for (let p = 7; p <= 12; p++) expect(classifyRegion(p)).toBe('outerBoard')
   })
 
   it('classifies 13-18 as opponentOuter', () => {
     for (let p = 13; p <= 18; p++)
-      expect(classifyRegion(p, ctx)).toBe('opponentOuter')
+      expect(classifyRegion(p)).toBe('opponentOuter')
   })
 
   it('classifies 19-21 as opponentInner', () => {
     for (const p of [19, 20, 21])
-      expect(classifyRegion(p, ctx)).toBe('opponentInner')
+      expect(classifyRegion(p)).toBe('opponentInner')
   })
 
   it('classifies 22-24 as opponentBearing', () => {
     for (const p of [22, 23, 24])
-      expect(classifyRegion(p, ctx)).toBe('opponentBearing')
+      expect(classifyRegion(p)).toBe('opponentBearing')
   })
 
   it('parses numeric strings', () => {
-    expect(classifyRegion('5', ctx)).toBe('homeInner')
-    expect(classifyRegion('20', ctx)).toBe('opponentInner')
+    expect(classifyRegion('5')).toBe('homeInner')
+    expect(classifyRegion('20')).toBe('opponentInner')
   })
 
   it('falls back to outerBoard for NaN / out-of-range numerics', () => {
-    expect(classifyRegion('abc', ctx)).toBe('outerBoard')
-  })
-
-  it('returns the same region regardless of on-roll direction — the arg exists for frame intent, not output', () => {
-    for (let p = 1; p <= 24; p++) {
-      const cw = classifyRegion(p, { direction: 'clockwise' })
-      const ccw = classifyRegion(p, { direction: 'counterclockwise' })
-      expect(cw).toBe(ccw)
-    }
+    expect(classifyRegion('abc')).toBe('outerBoard')
   })
 })
 
-describe('opponentOf', () => {
-  it('swaps color and direction', () => {
-    expect(
-      opponentOf({ color: 'white', direction: 'clockwise' })
-    ).toEqual({ color: 'black', direction: 'counterclockwise' })
-    expect(
-      opponentOf({ color: 'black', direction: 'counterclockwise' })
-    ).toEqual({ color: 'white', direction: 'clockwise' })
-    expect(
-      opponentOf({ color: 'white', direction: 'counterclockwise' })
-    ).toEqual({ color: 'black', direction: 'clockwise' })
-  })
-})
+// opponentOf is internal to the Board module; it's exercised through
+// importFromDecoded behavior in decodePositionId.test.ts rather than
+// as a direct public-API test.
