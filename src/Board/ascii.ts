@@ -43,30 +43,27 @@ export const ascii = (
 
   let boardDisplay = ''
 
-  // GNU-style header removed - gnuPositionId is deprecated
-  boardDisplay += `Nodots Backgammon\n`
-
-  // Helper to get player label with new standardized format: 'symbol | model | direction >'
-  const getPlayerLabel = (player: BackgammonPlayer | undefined, fallback: string) => {
+  // Helper to get player label: 'symbol | model | direction [ACTIVE]'
+  const getPlayerLabel = (
+    player: BackgammonPlayer | undefined,
+    fallback: string
+  ) => {
     const symbol = player?.color === 'black' ? 'X' : 'O'
     const model = (player?.id && playerModels?.[player.id]) ?? fallback
     const direction = player?.direction ?? 'unknown'
     const activeIndicator =
-      activePlayer?.id === player?.id ? ' *ACTIVE*' : ''
+      activePlayer?.id === player?.id ? ' [ACTIVE]' : ''
 
-    return `${symbol} | ${model} | ${direction} >${activeIndicator} - ${
-      player?.id ?? 'unknown'
-    }`
+    return `${symbol} | ${model} | ${direction}${activeIndicator}`
   }
 
   // Top label (fixed GNU standard)
   boardDisplay += ' +13-14-15-16-17-18------19-20-21-22-23-24-+'
   if (players && players.length >= 2) {
     const player1 = players[0]
-    const symbol1 = player1.color === 'black' ? 'X' : 'O'
-    boardDisplay += `     ${symbol1}: ${getPlayerLabel(player1, 'player1')}\n`
+    boardDisplay += `     ${getPlayerLabel(player1, 'Player 1')}\n`
   } else {
-    boardDisplay += '     O: player1\n'
+    boardDisplay += '     O | Player 1\n'
   }
 
   // Helper to get point by visual position
@@ -167,9 +164,9 @@ export const ascii = (
       player1Off = 0
     }
 
-    boardDisplay += `     ${player1Off} points\n`
+    boardDisplay += `     ${player1Off} borne off\n`
   } else {
-    boardDisplay += '     0 points\n'
+    boardDisplay += '     0 borne off\n'
   }
 
   // Build bottom half (positions 12-7 | bar | 6-1)
@@ -260,7 +257,6 @@ export const ascii = (
   // Add player names and on-roll info
   if (players && players.length >= 2) {
     const player2 = players[1]
-    const symbol2 = player2.color === 'black' ? 'X' : 'O'
     let player2Off = 0
 
     // Safely calculate player2Off with defensive checks
@@ -280,13 +276,13 @@ export const ascii = (
       player2Off = 0
     }
 
-    boardDisplay += `     ${symbol2}: ${getPlayerLabel(player2, 'player2')}\n`
+    boardDisplay += `     ${getPlayerLabel(player2, 'Player 2')}\n`
     if (activePlayer && activePlayer.color === player2.color) {
       boardDisplay += '                              On roll\n'
     }
-    boardDisplay += `                              ${player2Off} points\n`
+    boardDisplay += `                              ${player2Off} borne off\n`
   } else {
-    boardDisplay += '     X: player2\n'
+    boardDisplay += '     X | Player 2\n'
   }
 
   // Add move notation if provided
