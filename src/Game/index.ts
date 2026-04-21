@@ -1415,7 +1415,11 @@ export class Game {
       (p) => p.id === movedPlayer.id
     ) as any
     const finalMoves = Array.from(updatedActivePlay.moves || [])
-    if (process.env.NODOTS_DEBUG_DICE === '1') {
+    // Guarded for browser bundles — `process` is Node-only.
+    if (
+      typeof process !== 'undefined' &&
+      process.env?.NODOTS_DEBUG_DICE === '1'
+    ) {
       // Optional dice/move state debug
       debug('🎲 [DICE DEBUG] Game.move result:')
       debug(

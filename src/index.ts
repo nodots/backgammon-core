@@ -34,23 +34,6 @@ export const isValidUuid = (uuid: string): boolean =>
   )
 
 export * from './Board'
-// Explicit re-exports for the position-encoding API so bundlers
-// (Vite/Rollup) can see them through the CJS-to-ESM interop layer —
-// `export *` compiles to __exportStar() in CJS which Rollup can't
-// statically resolve to specific named exports.
-export {
-  exportToGnuPositionId,
-  decodePositionId,
-  importFromDecoded,
-  fromPositionId,
-  calculatePipCount,
-  fromGnuFrame,
-  toGnuFrame,
-  classifyRegion,
-  type DecodedGnuBoard,
-  type BoardRegion,
-  type OnRollContext,
-} from './Board'
 export { ascii } from './Board/ascii'
 export * from './Checker'
 export * from './Cube'

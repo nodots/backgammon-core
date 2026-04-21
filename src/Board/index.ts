@@ -25,17 +25,11 @@ import {
   getPossibleMovesWithPositionSpecificAutoSwitch,
 } from './methods/getPossibleMoves'
 export { exportToGnuPositionId } from './gnuPositionId'
-export { decodePositionId, type DecodedGnuBoard } from './decodePositionId'
-export { importFromDecoded } from './importFromDecoded'
-export { fromPositionId } from './fromPositionId'
-export { calculatePipCount } from './pipCount'
-export {
-  fromGnuFrame,
-  toGnuFrame,
-  classifyRegion,
-  type BoardRegion,
-  type OnRollContext,
-} from './frame'
+// Position-ID decoding, board-import building, coordinate-frame
+// helpers, and pip count live in @nodots/backgammon-api-utils — they
+// are browser-safe utilities consumed by both the client UI and the
+// server. Core only owns the encoder (exportToGnuPositionId) which
+// depends on the gnubg-hints native addon and is server-only.
 
 export const BOARD_POINT_COUNT = 24
 
