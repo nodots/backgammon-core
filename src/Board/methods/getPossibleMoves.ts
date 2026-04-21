@@ -81,8 +81,13 @@ const getBasicPossibleMoves = function getBasicPossibleMoves(
         p.position[playerDirection] === reentryPoint
     )
 
-    // DIAGNOSTIC: Log reentry search when tracing is enabled
-    if (process.env.NDBG_AI_TRACE === '1' && !possibleDestination) {
+    // DIAGNOSTIC: Log reentry search when tracing is enabled.
+    // Guarded for browser bundles — `process` is Node-only.
+    if (
+      typeof process !== 'undefined' &&
+      process.env?.NDBG_AI_TRACE === '1' &&
+      !possibleDestination
+    ) {
       const allPoints = Board.getPoints(board)
       const targetPoint = allPoints.find((p: BackgammonPoint) => p.position[playerDirection] === reentryPoint)
       console.log(`[CORE][TRACE] Reentry blocked for die ${dieValue}:`, {

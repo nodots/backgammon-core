@@ -155,10 +155,15 @@ class Logger {
   }
 }
 
-// Create default logger instance with env-based controls for speed
-const envLevel = (process.env.NODOTS_LOG_LEVEL as LogLevel) || 'info'
-const envSilent = process.env.NODOTS_LOG_SILENT === '1'
-const includeCaller = process.env.NODOTS_LOG_CALLER === '1' || process.env.NODOTS_LOG_CALLER === undefined
+// Create default logger instance with env-based controls for speed.
+// Guard the `process` access so core can be bundled into the browser;
+// without this the module throws ReferenceError at import time.
+const env: Record<string, string | undefined> =
+  typeof process !== 'undefined' && process.env ? process.env : {}
+const envLevel = (env.NODOTS_LOG_LEVEL as LogLevel) || 'info'
+const envSilent = env.NODOTS_LOG_SILENT === '1'
+const includeCaller =
+  env.NODOTS_LOG_CALLER === '1' || env.NODOTS_LOG_CALLER === undefined
 const defaultLogger = new Logger({
   level: envLevel,
   enableConsole: !envSilent,
