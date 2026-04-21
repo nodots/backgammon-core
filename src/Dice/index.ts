@@ -1,3 +1,4 @@
+import { randomInt } from 'crypto'
 import {
   BackgammonColor,
   BackgammonDice,
@@ -158,7 +159,9 @@ export class Dice {
   }
 
   static rollDie = function rollDie(): BackgammonDieValue {
-    return (Math.floor(Math.random() * 6) + 1) as BackgammonDieValue
+    // randomInt(1, 7) is exclusive on upper bound → yields 1..6 uniformly from
+    // Node's CSPRNG; cast narrows number → BackgammonDieValue (1|2|3|4|5|6).
+    return randomInt(1, 7) as BackgammonDieValue
   }
   // Convenience  mostly for tests
   static _RandomRoll = [this.rollDie(), this.rollDie()] as BackgammonRoll
