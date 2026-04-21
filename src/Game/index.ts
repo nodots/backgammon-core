@@ -2130,6 +2130,8 @@ export class Game {
         ...game,
         stateKind: 'completed',
         winner: winner.id,
+        winType: 'simple',
+        pointsWon: 64,
         players: updatedPlayers,
         cube: {
           ...game.cube,
@@ -2138,7 +2140,13 @@ export class Game {
           value: 64,
           offeredBy: undefined,
         },
-      } as any) // TODO: type as BackgammonGameCompleted
+        // Same cleanup as refuseDouble / resign: the completed game
+        // must not carry a mid-turn activePlay to the client.
+        activePlay: undefined,
+        activePlayer: winner,
+        endReason: 'cube_drop',
+        endTime: new Date(),
+      } as BackgammonGameCompleted)
     }
     // Transition back to 'rolling' state for the original offering player to roll
     const updatedCube = {
@@ -2227,6 +2235,7 @@ export class Game {
           value: undefined,
           owner: undefined,
           offeredBy: undefined,
+          offeredThisTurnBy: undefined,
         }
       : {
           ...game.cube,
@@ -2236,6 +2245,7 @@ export class Game {
             : undefined) as typeof game.cube.value,
           owner: game.cube.owner,
           offeredBy: undefined,
+          offeredThisTurnBy: undefined,
         }
 
     logger.info(
@@ -2250,6 +2260,15 @@ export class Game {
       pointsWon,
       players: updatedPlayers,
       cube: resetCube,
+      // Clear mid-turn state left over from whoever was playing when the
+      // cube was offered. Without this, the spread of ...game carries a
+      // stale activePlay (stateKind 'moving' with possibleMoves) through
+      // to the completed game, and the client renders a mid-game board
+      // on top of a game the server has marked finished.
+      activePlay: undefined,
+      activePlayer: winner,
+      endReason: 'cube_drop',
+      endTime: new Date(),
     } as BackgammonGameCompleted)
   }
 
@@ -2312,6 +2331,10 @@ export class Game {
       endReason: 'resignation',
       players: updatedPlayers,
       endTime: new Date(),
+      // Clear mid-turn state left over from whoever was playing when the
+      // resignation came in. See refuseDouble above for the full rationale.
+      activePlay: undefined,
+      activePlayer: winner,
     } as BackgammonGameCompleted) // as BackgammonGameCompleted: narrowing spread object to completed game type
   }
 

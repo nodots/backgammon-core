@@ -5,16 +5,15 @@
 ![Lines](https://img.shields.io/badge/Lines-82%25-green?style=flat-square)
 <!-- COVERAGE-END -->
 
-# @nodots-llc/backgammon-core
+# @nodots/backgammon-core
 
-**Version 4.6.4** | Core game logic for Nodots Backgammon
+**Version 1.0.0** | Core game logic for Nodots Backgammon
 
 A comprehensive TypeScript library implementing the complete game logic for backgammon. This package provides all the core mechanics needed to build backgammon applications, including board management, move validation, state machine management, robot player support, XG game parsing, and full compliance with official backgammon rules.
 
 ## Table of Contents
 
 - [Features](#features)
-- [What's New in v4.6](#whats-new-in-v46)
 - [Architecture](#architecture)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
@@ -49,34 +48,7 @@ A comprehensive TypeScript library implementing the complete game logic for back
 
 - **Position Reconstruction** - Reconstruct board states from move history
 
-- **TypeScript First** - Full type safety with exported types from `@nodots-llc/backgammon-types`
-
----
-
-## What's New in v4.6
-
-### XG Parser
-- Parse eXtreme Gammon `.xg` and `.txt` match export files
-- Extract player metadata (names, Elo ratings, match length)
-- Reconstruct complete game histories with move-by-move board states
-- Generate GNU Position IDs for each position
-
-### Enhanced Position ID System
-- Golden Rule compliance: position IDs now use player-directional encoding
-- Consistent encoding regardless of player color or direction
-- Improved compatibility with GNU Backgammon analysis tools
-
-### Gammon/Backgammon Detection
-- Proper detection of gammon (2x) and backgammon (3x) wins
-- Scoring considers checker positions on bar and in winner's home board
-
-### Constrained Doubles Handling
-- Improved move sanitization for doubles when moves are blocked
-- Automatic detection and handling of "no-move" scenarios
-
-### Bar-First Enforcement
-- Checkers on bar must be moved first before any other moves
-- Proper `movableCheckers` filtering for bar-entry situations
+- **TypeScript First** - Full type safety with exported types from `@nodots/backgammon-types`
 
 ---
 
@@ -84,7 +56,7 @@ A comprehensive TypeScript library implementing the complete game logic for back
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                        @nodots-llc/backgammon-core                      │
+│                        @nodots/backgammon-core                      │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
 │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                 │
@@ -159,7 +131,7 @@ src/
 ## Installation
 
 ```bash
-npm install @nodots-llc/backgammon-core
+npm install @nodots/backgammon-core
 ```
 
 ### Requirements
@@ -173,7 +145,7 @@ npm install @nodots-llc/backgammon-core
 ## Quick Start
 
 ```typescript
-import { Game, Board, ascii } from '@nodots-llc/backgammon-core'
+import { Game, Board, ascii } from '@nodots/backgammon-core'
 
 // Create a new game
 let game = Game.createNewGame(
@@ -319,7 +291,7 @@ Board.getCheckers(board)
 Parse eXtreme Gammon match files:
 
 ```typescript
-import { parseXGFile } from '@nodots-llc/backgammon-core'
+import { parseXGFile } from '@nodots/backgammon-core'
 
 const matchData = parseXGFile(xgFileContent)
 
@@ -345,7 +317,7 @@ for (const game of matchData.games) {
 Generate GNU Backgammon-compatible position IDs:
 
 ```typescript
-import { generatePositionId, parsePositionId } from '@nodots-llc/backgammon-core'
+import { generatePositionId, parsePositionId } from '@nodots/backgammon-core'
 
 // Generate from board state
 const positionId = generatePositionId(board, activePlayer)

@@ -19,8 +19,8 @@ describe('ascii', () => {
     // Verify empty points
     expect(display.match(/   /g)?.length).toBeGreaterThan(0) // Should have empty spaces
 
-    // The current implementation shows "0 points" but not specific BAR/OFF counts
-    expect(display).toContain('0 points')
+    // Empty board shows "0 borne off" labels, no specific BAR/OFF counts
+    expect(display).toContain('0 borne off')
   })
 
   it('should display checkers with correct symbols', () => {
@@ -83,7 +83,7 @@ describe('ascii', () => {
 
     // Current implementation doesn't show specific OFF counts in text
     // Just verify the board displays correctly
-    expect(display).toContain('points')
+    expect(display).toContain('borne off')
     expect(display).toBeDefined()
   })
 
@@ -97,13 +97,14 @@ describe('ascii', () => {
     const board = Board.initialize(boardImport)
     const display = ascii(board)
 
-    // Should show 5 X symbols stacked vertically
+    // Should show 5 X symbols stacked vertically. The bottom label
+    // ("X | Player 2") matches " X " too, so total matches = 5 + 1.
     const lines = display.split('\n')
     let xCount = 0
     for (const line of lines) {
       if (line.includes(' X ')) xCount++
     }
-    expect(xCount).toBe(5)
+    expect(xCount).toBe(6)
   })
 
   it('should display a full game board correctly', () => {
@@ -115,8 +116,7 @@ describe('ascii', () => {
     expect(display.length).toBeGreaterThan(0)
 
     // Check for standard starting position elements
-    expect(display).toContain('0 points') // Current implementation shows this
-    expect(display).toContain('|BAR|')
+    expect(display).toContain('0 borne off')    expect(display).toContain('|BAR|')
   })
 
   it('should handle maximum checkers per point', () => {
@@ -129,13 +129,14 @@ describe('ascii', () => {
     const board = Board.initialize(boardImport)
     const display = ascii(board)
 
-    // When there are >5 checkers, should show 4 visible checkers + (N) indicator
+    // When there are >5 checkers, should show 4 visible checkers + (N) indicator.
+    // Top label ("O | Player 1") also matches " O ", so total matches = 4 + 1.
     const lines = display.split('\n')
     let oCount = 0
     for (const line of lines) {
       if (line.includes(' O ')) oCount++
     }
-    expect(oCount).toBe(4) // 4 visible checkers when >5 total
+    expect(oCount).toBe(5) // 4 visible checkers + 1 label match
 
     // Should also show the (N) indicator - with 2+ digits it gets truncated to fit 3-char cell
     expect(display).toContain('(15') // Truncated due to 3-character cell width
@@ -180,7 +181,7 @@ describe('ascii', () => {
     const display = ascii(board)
 
     // Verify board displays correctly with off checkers
-    expect(display).toContain('points')
+    expect(display).toContain('borne off')
     expect(display).toBeDefined()
   })
 
@@ -194,13 +195,14 @@ describe('ascii', () => {
     const board = Board.initialize(boardImport)
     const display = ascii(board)
 
-    // When there are >5 checkers, should show 4 visible checkers + (N) indicator
+    // When there are >5 checkers, show 4 visible checkers + (N) indicator.
+    // Bottom label ("X | Player 2") also matches " X ", so total = 4 + 1.
     const lines = display.split('\n')
     let xCount = 0
     for (const line of lines) {
       if (line.includes(' X ')) xCount++
     }
-    expect(xCount).toBe(4) // 4 visible checkers when >5 total
+    expect(xCount).toBe(5) // 4 visible checkers + 1 label match
 
     // Should show the (N) indicator - with 2+ digits it gets truncated to fit 3-char cell
     expect(display).toContain('(15') // Truncated due to 3-character cell width
@@ -295,8 +297,7 @@ describe('ascii', () => {
     // Should not crash and should display empty spaces
     expect(display).toBeDefined()
     expect(display.length).toBeGreaterThan(0)
-    expect(display).toContain('0 points') // Current implementation shows this
-  })
+    expect(display).toContain('0 borne off')  })
 
   it('should handle empty spaces between occupied points', () => {
     const boardImport: BackgammonCheckerContainerImport[] = [
@@ -337,7 +338,7 @@ describe('ascii', () => {
     const display = ascii(board)
 
     // Should display correctly with many off checkers
-    expect(display).toContain('points')
+    expect(display).toContain('borne off')
     expect(display).toBeDefined()
   })
 
@@ -358,7 +359,7 @@ describe('ascii', () => {
     const display = ascii(board)
 
     // Verify board displays correctly with mixed off checkers
-    expect(display).toContain('points')
+    expect(display).toContain('borne off')
     expect(display).toBeDefined()
   })
 
