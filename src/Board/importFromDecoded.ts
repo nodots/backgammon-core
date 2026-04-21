@@ -15,9 +15,9 @@ const toPointValue = (value: number): BackgammonPointValue =>
  * BackgammonCheckerContainerImport entries.
  *
  * Callers must supply an on-roll context (color + direction). The
- * decoder's `x` array is the opponent (TanBoard[0]) and `o` is the
- * player on roll (TanBoard[1]); each array is indexed 0..23 for points
- * 1..24 in that player's own direction, with index 24 = bar.
+ * decoder's `opponent` array is TanBoard[0] and `onRoll` is
+ * TanBoard[1]; each array is indexed 0..23 for points 1..24 in that
+ * player's own direction, with index 24 = bar.
  *
  * Output is the shape `Board.initialize(imports)` consumes.
  */
@@ -52,15 +52,21 @@ export function importFromDecoded(
     }
   }
 
-  addPoints(decoded.x, opponent) // TanBoard[0]
-  addPoints(decoded.o, onRoll) // TanBoard[1]
+  addPoints(decoded.opponent, opponent) // TanBoard[0]
+  addPoints(decoded.onRoll, onRoll) // TanBoard[1]
 
   // Off count = 15 minus (points + bar) for that player.
   const onBoardCount = (tan: number[]) =>
     tan.slice(0, 24).reduce((sum, n) => sum + n, 0) + tan[24]
 
-  const opponentOff = Math.max(0, CHECKERS_PER_PLAYER - onBoardCount(decoded.x))
-  const onRollOff = Math.max(0, CHECKERS_PER_PLAYER - onBoardCount(decoded.o))
+  const opponentOff = Math.max(
+    0,
+    CHECKERS_PER_PLAYER - onBoardCount(decoded.opponent)
+  )
+  const onRollOff = Math.max(
+    0,
+    CHECKERS_PER_PLAYER - onBoardCount(decoded.onRoll)
+  )
 
   if (opponentOff > 0) {
     imports.push({

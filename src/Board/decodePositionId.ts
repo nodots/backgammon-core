@@ -7,12 +7,9 @@
  *   TanBoard[1] (bitstream second) = player on roll
  *
  * Each 25-entry tan array is indexed [0..23] for points 1..24 in that
- * player's own direction; index 24 is their bar.
- *
- * Field names `x` and `o` are historical (x = first read, o = second
- * read) and do NOT refer to board colors. `x` is always the opponent;
- * `o` is always the player on roll. Callers must supply an on-roll
- * context to map these to concrete players — see importFromDecoded().
+ * player's own direction; index 24 is their bar. Callers must supply
+ * an on-roll context (color + direction) to map these arrays to
+ * concrete players — see importFromDecoded().
  */
 
 const BASE64_CHARS =
@@ -20,9 +17,9 @@ const BASE64_CHARS =
 
 export interface DecodedGnuBoard {
   /** TanBoard[0] — opponent's checkers. 25 entries: 0-23 points 1-24, 24 bar. */
-  x: number[]
+  opponent: number[]
   /** TanBoard[1] — player-on-roll's checkers. 25 entries: 0-23 points 1-24, 24 bar. */
-  o: number[]
+  onRoll: number[]
 }
 
 function base64Value(ch: string): number {
@@ -62,8 +59,8 @@ function keyFromPositionId(positionId: string): Uint8Array {
 
 function boardFromKey(key: Uint8Array): DecodedGnuBoard {
   const board: DecodedGnuBoard = {
-    x: new Array(25).fill(0),
-    o: new Array(25).fill(0),
+    opponent: new Array(25).fill(0),
+    onRoll: new Array(25).fill(0),
   }
 
   let bitPos = 0
@@ -72,7 +69,7 @@ function boardFromKey(key: Uint8Array): DecodedGnuBoard {
   // 25 positions each: points 1-24 then bar. Each count is encoded as
   // N ones followed by a terminating zero (unary).
   for (let player = 0; player < 2; player++) {
-    const arr = player === 0 ? board.x : board.o
+    const arr = player === 0 ? board.opponent : board.onRoll
 
     for (let point = 0; point < 25; point++) {
       let checkerCount = 0
@@ -100,9 +97,9 @@ function boardFromKey(key: Uint8Array): DecodedGnuBoard {
 /**
  * Decode a 14-character GNU Backgammon position ID.
  *
- * Returns two tan arrays where `x` is the opponent (TanBoard[0]) and
- * `o` is the player on roll (TanBoard[1]). Callers that need to render
- * must pair these with an on-roll color/direction via importFromDecoded.
+ * Returns two tan arrays: `opponent` (TanBoard[0]) and `onRoll`
+ * (TanBoard[1]). Callers that need to render must pair these with an
+ * on-roll color/direction via importFromDecoded.
  *
  * @throws Error if the position ID is not exactly 14 characters.
  */
