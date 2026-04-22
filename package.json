@@ -38,7 +38,6 @@
     "prebuild": "npm run clean",
     "build": "tsc -b --force",
     "clean": "rm -rf dist coverage",
-    "update-coverage": "node scripts/update-coverage.js",
     "simulate": "NODE_OPTIONS= ts-node src/scripts/simulate.ts",
     "simulate:game": "NODE_OPTIONS= ts-node src/scripts/simulateGame.ts",
     "simulate:multiple": "NODE_OPTIONS= ts-node src/scripts/simulateMultipleGames.ts",
