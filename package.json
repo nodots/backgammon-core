@@ -1,6 +1,6 @@
 {
   "name": "@nodots/backgammon-core",
-  "version": "1.0.0-rc.8",
+  "version": "1.0.0-rc.9",
   "description": "Core game logic for Nodots Backgammon",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -54,7 +54,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@nodots/backgammon-types": "^1.0.0-rc.1",
+    "@nodots/backgammon-types": "1.0.0-rc.4",
     "@nodots/gnubg-hints": "^1.0.0-rc.1",
     "uuid": "^11.1.0"
   },
