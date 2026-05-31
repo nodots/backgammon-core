@@ -2,7 +2,6 @@ import {
   BackgammonGameMoved,
   BackgammonGameMoving,
   BackgammonGameRollingForStart,
-  BackgammonMove,
   BackgammonMoveSkeleton,
 } from '@nodots/backgammon-types'
 import { Board, Game, Player } from '..'
@@ -138,104 +137,90 @@ export async function runDebugSingleGame() {
           return false
         })
       ) {
-        const nextMove = Array.from(gameMoved.activePlay.moves).find((m: any) => {
-          if (m.stateKind === 'ready' || (m.stateKind === 'in-progress' && !m.origin)) {
-            const pm = Board.getPossibleMoves(gameMoved.board, m.player, m.dieValue) as
-              | BackgammonMoveSkeleton[]
-              | { moves: BackgammonMoveSkeleton[] }
-            const movesArr = Array.isArray(pm) ? pm : pm.moves
-            return movesArr.length > 0
-          }
-          return false
-        }) as BackgammonMove | undefined
-
-        if (!nextMove) {
-          console.log('\n⚠️  No next move found - game may be stuck!')
-          break
-        }
-
-        // Recalculate possible moves for this die value based on current board state
-        const pm = Board.getPossibleMoves(
-          gameMoved.board,
-          (nextMove as any).player,
-          (nextMove as any).dieValue
-        ) as BackgammonMoveSkeleton[] | { moves: BackgammonMoveSkeleton[] }
-        const possibleMoves = Array.isArray(pm) ? pm : pm.moves
-
-        // Take the first valid move that has checkers
-        let validMove = null
-        for (const move of possibleMoves) {
-          const origin = move.origin
-          const checkers = origin.checkers
-          if (
-            checkers.length > 0 &&
-            checkers[0].color === gameMoved.activeColor
-          ) {
-            validMove = move
-            break
-          }
-        }
-
-        if (!validMove) {
-          console.log(
-            `\n⚠️  No valid moves found for die value ${nextMove.dieValue} - game may be stuck!`
-          )
-          break
-        }
-
-        const origin = validMove.origin
-        const destination = validMove.destination
-
-        try {
-          // Ensure proper state transition before move
-          const gameToMove = gameMoved
-          const originChecker = origin.checkers.find(
-            (c: any) => c.color === (gameMoved as any).activeColor
-          )
-          if (!originChecker) {
-            if (!FAST) console.log('No checker of active color at chosen origin; breaking')
-            break
-          }
-          const moveResult = Game.move(
-            gameToMove as BackgammonGameMoving,
-            originChecker.id
-          )
-          if ((moveResult as any).stateKind === 'moved') {
-            gameMoved = moveResult as BackgammonGameMoved
-          } else if ('board' in moveResult) {
-            gameMoved = moveResult as BackgammonGameMoving
-            moveCount++
-            totalMoves++
-
-            // Display board after this move (skip in FAST mode)
-            if (!FAST && gameMoved.stateKind === 'moving') {
-              displayBoard(
-                gameMoved,
-                turnCount,
-                moveCount,
-                roll,
-                gameRolled.activeColor,
-                playerModels
-              )
+        // Gather candidate (checkerId, dieValue) pairs across all ready dice.
+        // Game.move enforces the must-use-both-dice / must-use-larger-die rules
+        // by throwing; skip rejected candidates and try the next so the
+        // simulation plays a rule-compliant move instead of getting stuck.
+        const readyDice = Array.from(gameMoved.activePlay.moves).filter(
+          (m: any) =>
+            m.stateKind === 'ready' ||
+            (m.stateKind === 'in-progress' && !m.origin)
+        )
+        const candidates: { checkerId: string; dieValue: any }[] = []
+        for (const rm of readyDice) {
+          const rpm = Board.getPossibleMoves(
+            gameMoved.board,
+            (rm as any).player,
+            (rm as any).dieValue
+          ) as BackgammonMoveSkeleton[] | { moves: BackgammonMoveSkeleton[] }
+          const rmoves = Array.isArray(rpm) ? rpm : rpm.moves
+          for (const mv of rmoves) {
+            const checker = mv.origin.checkers.find(
+              (c: any) => c.color === (gameMoved as any).activeColor
+            )
+            if (checker) {
+              candidates.push({
+                checkerId: checker.id,
+                dieValue: (rm as any).dieValue,
+              })
             }
           }
-        } catch (error) {
+        }
+
+        if (candidates.length === 0) {
+          if (!FAST) console.log('\n⚠️  No valid moves found - game may be stuck!')
+          break
+        }
+
+        let moved = false
+        let lastRuleError: any = null
+        for (const c of candidates) {
+          try {
+            const moveResult = Game.move(
+              gameMoved as BackgammonGameMoving,
+              c.checkerId,
+              c.dieValue
+            )
+            if ((moveResult as any).stateKind === 'moved') {
+              gameMoved = moveResult as BackgammonGameMoved
+            } else if ('board' in moveResult) {
+              gameMoved = moveResult as BackgammonGameMoving
+              moveCount++
+              totalMoves++
+
+              // Display board after this move (skip in FAST mode)
+              if (!FAST && gameMoved.stateKind === 'moving') {
+                displayBoard(
+                  gameMoved,
+                  turnCount,
+                  moveCount,
+                  roll,
+                  gameRolled.activeColor,
+                  playerModels
+                )
+              }
+            }
+            moved = true
+            break
+          } catch (error: any) {
+            if (
+              error?.name === 'MustUseBothDiceError' ||
+              error?.name === 'MustUseLargerDieError'
+            ) {
+              lastRuleError = error
+              continue
+            }
+            throw error
+          }
+        }
+
+        if (!moved) {
           if (!FAST) {
-            console.log(`\n❌ Error making move: ${error}`)
             console.log(
-              `Origin: ${
-                origin.kind === 'point' ? origin.position.clockwise : 'bar'
-              }`
+              `\n⚠️  All candidate moves rejected${
+                lastRuleError ? ` (${lastRuleError.name})` : ''
+              } - game may be stuck!`
             )
-            console.log(
-              `Destination: ${
-                destination.kind === 'point'
-                  ? destination.position.clockwise
-                  : 'off'
-              }`
-            )
-            console.log(`Game state: ${gameMoved.stateKind}`)
-            console.log('\n⚠️  Game stuck due to move error!')
           }
           break
         }
