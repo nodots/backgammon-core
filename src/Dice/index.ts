@@ -14,7 +14,16 @@ import {
 } from '@nodots/backgammon-types'
 import { generateId } from '..'
 
+// Optional deterministic random source for simulations/tests. When unset,
+// rollDie uses Node's CSPRNG (randomInt). When set, it must return a float in
+// [0, 1); rollDie maps it to 1..6. Production code never sets this.
+let diceRandomSource: (() => number) | null = null
+
 export class Dice {
+  static setRandomSource(source: (() => number) | null): void {
+    diceRandomSource = source
+  }
+
   // Overloads for precise return types based on state
   public static initialize(
     color: BackgammonColor
@@ -159,6 +168,11 @@ export class Dice {
   }
 
   static rollDie = function rollDie(): BackgammonDieValue {
+    if (diceRandomSource) {
+      // Map the injected [0,1) source to 1..6; cast narrows number →
+      // BackgammonDieValue (1|2|3|4|5|6).
+      return (Math.floor(diceRandomSource() * 6) + 1) as BackgammonDieValue
+    }
     // randomInt(1, 7) is exclusive on upper bound → yields 1..6 uniformly from
     // Node's CSPRNG; cast narrows number → BackgammonDieValue (1|2|3|4|5|6).
     return randomInt(1, 7) as BackgammonDieValue

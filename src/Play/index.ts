@@ -17,11 +17,7 @@ import {
 } from '@nodots/backgammon-types'
 import { Board, generateId } from '..'
 import { debug, logger } from '../utils/logger'
-import {
-  InvalidMoveSequenceError,
-  MustUseBothDiceError,
-  MustUseLargerDieError,
-} from './errors'
+import { MustUseBothDiceError, MustUseLargerDieError } from './errors'
 export * from '../index'
 
 export interface MoveExecutionOptions {
@@ -526,37 +522,49 @@ export class Play {
     // Step 2: Execute the plan (pure)
     const result = Play.executePlannedMove(board, play, plan)
 
-    // Step 3: Validate the result if sequence is complete (pure)
-    // FIX: Never validate during individual move execution when play has pre-completed no-moves
-    // Only validate when all dice have been rolled and used, not when executing partial sequences
-    const originalHadNoMoves = play.moves.some((m) => m.moveKind === 'no-move')
+    // Step 3: Validate the completed sequence against the turn-start dice budget.
+    // The maximum number of dice any legal ordering can use was computed in
+    // Play.initialize (play.maxDiceUsable) from the turn-start board. Enforcing
+    // it here — once no ready moves remain — guarantees the player used as many
+    // dice as the rules require, regardless of which ordering they chose.
     const resultHasReadyMoves = result.newPlay.moves.some(
       (m) => m.stateKind === 'ready'
     )
 
-    // Only validate if:
-    // 1. No ready moves remain in result AND
-    // 2. No pre-completed no-moves existed (meaning this is a fresh complete sequence)
+    if (!resultHasReadyMoves) {
+      const maxDiceUsable = play.maxDiceUsable
+      const actualDiceUsed = result.newPlay.moves.filter(
+        (m) => m.stateKind === 'completed' && m.moveKind !== 'no-move'
+      ).length
 
-    if (!resultHasReadyMoves && !originalHadNoMoves) {
-      const validation = Play.validateMoveSequence(
-        result.newBoard,
-        result.newPlay
-      )
-      if (!validation.isValid) {
-        // Sequence violates backgammon rules - throw appropriate error
-        if (validation.error?.includes('both dice')) {
+      // Only enforce when the budget was computed (plays produced by
+      // Play.initialize). Guards against undefined for legacy/synthetic plays.
+      if (typeof maxDiceUsable === 'number') {
+        if (actualDiceUsed < maxDiceUsable) {
           throw MustUseBothDiceError(
-            `${validation.error}. Alternative sequences exist that would use both dice.`
+            `Must use ${maxDiceUsable} dice when legally possible; only ${actualDiceUsed} used. A legal ordering exists that uses more dice.`
           )
-        } else if (validation.error?.includes('larger die')) {
-          throw MustUseLargerDieError(
-            `${validation.error}. The larger die value must be used when only one die can be played.`
+        }
+
+        // Must-use-larger-die rule: when only one die can be used and both were
+        // individually playable from the turn-start board, the larger must be used.
+        const playableAtStart = play.dieValuesPlayableAtStart ?? []
+        if (maxDiceUsable === 1 && actualDiceUsed === 1) {
+          const usedMove = result.newPlay.moves.find(
+            (m) => m.stateKind === 'completed' && m.moveKind !== 'no-move'
           )
-        } else {
-          throw InvalidMoveSequenceError(
-            `Invalid move sequence: ${validation.error}`
-          )
+          const distinctPlayable = [...new Set(playableAtStart)]
+          if (
+            usedMove &&
+            distinctPlayable.length >= 2 &&
+            usedMove.dieValue < Math.max(...distinctPlayable)
+          ) {
+            throw MustUseLargerDieError(
+              `Must use the larger die (${Math.max(
+                ...distinctPlayable
+              )}) when only one die can be played; ${usedMove.dieValue} was used.`
+            )
+          }
         }
       }
 
@@ -860,6 +868,60 @@ export class Play {
     // Step 4: Combine all moves
     const allMoves = [...reentryMoves, ...regularMoves]
 
+    // Step 5: Compute the maximum number of dice any legal ordering can use,
+    // measured from the turn-start board. This is the authoritative target for
+    // the must-use-both-dice / must-use-larger-die rules, enforced later in
+    // pureMove. Reentries are mandatory and consume one die each; regular dice
+    // are explored against the post-reentry board (matching how their
+    // possibleMoves were derived above) across both orderings.
+    const playableReentries = reentryMoves.filter(
+      (m) => m.moveKind !== 'no-move'
+    ).length
+
+    const regularPlay = {
+      id: generateId(),
+      board: boardAfterReentries,
+      player,
+      moves: regularMoves,
+      stateKind: 'moving',
+    } as BackgammonPlayMoving
+
+    const distinctRegular = [...new Set(regularDiceValues)]
+    let maxFromRegular = 0
+    if (regularDiceValues.length > 0) {
+      maxFromRegular =
+        distinctRegular.length >= 2
+          ? Math.max(
+              Play.testSequenceDiceUsage(boardAfterReentries, regularPlay, [
+                distinctRegular[0],
+                distinctRegular[1],
+              ]),
+              Play.testSequenceDiceUsage(boardAfterReentries, regularPlay, [
+                distinctRegular[1],
+                distinctRegular[0],
+              ])
+            )
+          : // Single value: doubles (2-4 same dice) or one leftover regular die
+            Play.testSequenceDiceUsage(
+              boardAfterReentries,
+              regularPlay,
+              regularDiceValues
+            )
+    }
+
+    const maxDiceUsable = playableReentries + maxFromRegular
+    const dieValuesPlayableAtStart = [
+      ...new Set(
+        allMoves
+          .filter(
+            (m) =>
+              Array.isArray((m as BackgammonMoveReady).possibleMoves) &&
+              (m as BackgammonMoveReady).possibleMoves.length > 0
+          )
+          .map((m) => m.dieValue)
+      ),
+    ] as BackgammonDieValue[]
+
     // Check if all moves are no-moves and auto-complete the play
     const allMovesAreNoMoves = allMoves.every(
       (move) => move.moveKind === 'no-move'
@@ -887,6 +949,8 @@ export class Play {
         player,
         moves: completedMoves,
         stateKind: 'moving',
+        maxDiceUsable,
+        dieValuesPlayableAtStart,
       } as BackgammonPlayMoving
     }
 
@@ -934,6 +998,8 @@ export class Play {
         player,
         moves: normalized,
         stateKind: 'moving',
+        maxDiceUsable,
+        dieValuesPlayableAtStart,
       } as BackgammonPlayMoving
     }
 
@@ -943,6 +1009,8 @@ export class Play {
       player,
       moves: allMoves,
       stateKind: 'moving',
+      maxDiceUsable,
+      dieValuesPlayableAtStart,
     } as BackgammonPlayMoving
   }
 

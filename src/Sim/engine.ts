@@ -1,4 +1,5 @@
 import {
+  BackgammonDieValue,
   BackgammonGame,
   BackgammonGameMoving,
   BackgammonGameRolledForStart,
@@ -6,6 +7,7 @@ import {
   BackgammonMoveSkeleton,
 } from '@nodots/backgammon-types'
 import { Board } from '../Board'
+import { Dice } from '../Dice'
 import { Game } from '../Game'
 import { Play } from '../Play'
 
@@ -20,10 +22,12 @@ export class EngineRunner {
   constructor(private opts: EngineOptions = {}) {
     const seed = opts.seed ?? Date.now() >>> 0
     let s = seed >>> 0
-    // Simple LCG for deterministic runs
+    // Simple LCG for deterministic runs. s is kept unsigned via >>> 0, so divide
+    // by 2^32 directly — `s & 0xffffffff` would reinterpret s as a signed 32-bit
+    // int and yield negative values, breaking the [0, 1) contract.
     this.rng = () => {
       s = (1664525 * s + 1013904223) >>> 0
-      return (s & 0xffffffff) / 0x100000000
+      return s / 0x100000000
     }
   }
 
@@ -57,9 +61,43 @@ export class EngineRunner {
       return Game.checkAndCompleteTurn(game)
     }
 
-    // Try each ready die in order; pick first with any legal moves from valid origins
+    // Heuristic: prefer bear-offs, then hits, then moves that advance closest to home
+    const dir = (game as any).activePlay.player.direction as
+      | 'clockwise'
+      | 'counterclockwise'
+    const destInfo = (mv: any) => {
+      const dest = mv.destination
+      if (dest.kind === 'off') return { kind: 'off' as const, pos: 0, hit: false }
+      if (dest.kind === 'point') {
+        const pos = dest.position[dir] as number
+        const boardDest = game.board.points.find((p: any) => p.id === dest.id)
+        const hit =
+          boardDest &&
+          Array.isArray(boardDest.checkers) &&
+          boardDest.checkers.length === 1 &&
+          boardDest.checkers[0].color !== (game as any).activePlay.player.color
+        return { kind: 'point' as const, pos, hit: !!hit }
+      }
+      return { kind: 'point' as const, pos: 24, hit: false }
+    }
+    const scoreOf = (mv: any) => {
+      const info = destInfo(mv)
+      let score = 0
+      if (info.kind === 'off') score += 1000
+      if (info.hit) score += 500
+      score += 25 - (info.pos || 25)
+      return score
+    }
+
+    // Build ordered attempts preserving the original priority: dice in roll
+    // order, each die's candidates best-first. The engine enforces the
+    // must-use-both-dice and must-use-larger-die rules by throwing; on a
+    // rejected move fall back to the next attempt so the simulation only plays
+    // rule-compliant moves without otherwise changing move selection.
+    type Attempt = { originId: string; dieValue: BackgammonDieValue }
+    const attempts: Attempt[] = []
     for (const rm of ready) {
-      const die = rm.dieValue
+      const die = rm.dieValue as BackgammonDieValue
       const pm = Board.getPossibleMoves(
         game.board,
         (game as any).activePlay.player,
@@ -68,38 +106,24 @@ export class EngineRunner {
       const arr = Array.isArray(pm) ? pm : (pm?.moves || [])
       const byOrigin = arr.filter((m) => validOrigins.includes((m as any).origin?.id))
       const candidates = byOrigin.length > 0 ? byOrigin : arr
-      if (candidates.length > 0) {
-        // Heuristic: prefer bear-offs, then hits, then moves that advance closest to home (lowest destination position)
-        const dir = (game as any).activePlay.player.direction as 'clockwise' | 'counterclockwise'
-        const destInfo = (mv: any) => {
-          const dest = mv.destination
-          if (dest.kind === 'off') return { kind: 'off' as const, pos: 0, hit: false }
-          if (dest.kind === 'point') {
-            const pos = dest.position[dir] as number
-            // Determine hit by looking at current board destination occupancy
-            const boardDest = game.board.points.find((p: any) => p.id === dest.id)
-            const hit = boardDest && Array.isArray(boardDest.checkers) && boardDest.checkers.length === 1 && boardDest.checkers[0].color !== (game as any).activePlay.player.color
-            return { kind: 'point' as const, pos, hit: !!hit }
-          }
-          return { kind: 'point' as const, pos: 24, hit: false }
+      const sorted = [...candidates].sort((a, b) => scoreOf(b) - scoreOf(a))
+      for (const mv of sorted) {
+        const originId = (mv as any).origin?.id as string | undefined
+        if (originId) attempts.push({ originId, dieValue: die })
+      }
+    }
+
+    for (const a of attempts) {
+      try {
+        return Game.executeAndRecalculate(game, a.originId, {
+          expectedDieValue: a.dieValue,
+        })
+      } catch (e: any) {
+        const name = e?.name
+        if (name === 'MustUseBothDiceError' || name === 'MustUseLargerDieError') {
+          continue
         }
-        let best: any = null
-        let bestScore = -Infinity
-        for (const mv of candidates) {
-          const info = destInfo(mv as any)
-          let score = 0
-          if (info.kind === 'off') score += 1000
-          if (info.hit) score += 500
-          score += 25 - (info.pos || 25)
-          if (score > bestScore) {
-            bestScore = score
-            best = mv
-          }
-        }
-        if (best && (best as any).origin && (best as any).origin.id) {
-          const originId = (best as any).origin.id as string
-          return Game.executeAndRecalculate(game, originId)
-        }
+        throw e
       }
     }
 
@@ -108,6 +132,17 @@ export class EngineRunner {
   }
 
   runUntilWin(maxTurns = 400): { game: BackgammonGame; turns: number } {
+    // Drive dice from this engine's seeded RNG so runs are deterministic per
+    // seed. Reset in the finally so production dice (CSPRNG) are unaffected.
+    Dice.setRandomSource(this.rng)
+    try {
+      return this.runLoop(maxTurns)
+    } finally {
+      Dice.setRandomSource(null)
+    }
+  }
+
+  private runLoop(maxTurns: number): { game: BackgammonGame; turns: number } {
     let turns = 0
     let s0 = this.init()
     // Resolve roll for start
