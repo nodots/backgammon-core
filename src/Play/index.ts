@@ -78,7 +78,21 @@ export class Play {
     const expectedDieValue = options?.expectedDieValue
 
     // Get initial die values (no mutation)
-    let firstDieValue = expectedDieValue ?? readyMoves[0].dieValue
+    // Must-use-larger-die: when one die can be played this turn and more
+    // than one die value is still ready, the larger die is the only choice
+    // the rules allow. Plays persisted before initialize pruned the
+    // smaller-die move (stale plays from the database) still carry both
+    // moves as ready — prefer the larger die for them.
+    const distinctReadyDice = [...new Set(readyMoves.map((m) => m.dieValue))]
+    const largerDieMandatory =
+      typeof expectedDieValue !== 'number' &&
+      play.maxDiceUsable === 1 &&
+      distinctReadyDice.length >= 2
+    let firstDieValue =
+      expectedDieValue ??
+      (largerDieMandatory
+        ? distinctReadyDice.reduce((a, b) => (b > a ? b : a))
+        : readyMoves[0].dieValue)
     const otherMoves = readyMoves.filter((m) => m.dieValue !== firstDieValue)
     let secondDieValue =
       otherMoves.length > 0 ? otherMoves[0].dieValue : firstDieValue
@@ -921,6 +935,45 @@ export class Play {
           .map((m) => m.dieValue)
       ),
     ] as BackgammonDieValue[]
+
+    // Must-use-larger-die rule, applied at turn start: when one die can be
+    // played this turn and both dice had moves from the turn-start board,
+    // the rules require the larger die. pureMove rejects the smaller die
+    // after execution; converting its move to a completed no-move here means
+    // the option is never offered to humans or robots. Production game
+    // 2d98cf14: one checker on the 2-point, roll [3,5] — either die bears
+    // off, the robot picked 3 and every turn attempt was rejected.
+    if (
+      maxDiceUsable === 1 &&
+      dieValuesPlayableAtStart.length >= 2 &&
+      playableReentries === 0
+    ) {
+      const largerDie = dieValuesPlayableAtStart.reduce((a, b) =>
+        b > a ? b : a
+      )
+      for (let i = 0; i < allMoves.length; i++) {
+        const move = allMoves[i]
+        if (
+          move.stateKind === 'ready' &&
+          move.dieValue !== largerDie &&
+          // cast: _sequenceDependent is a private marker set above, not on the move type
+          !(move as any)._sequenceDependent
+        ) {
+          allMoves[i] = {
+            id: move.id,
+            player,
+            dieValue: move.dieValue,
+            stateKind: 'completed',
+            moveKind: 'no-move',
+            possibleMoves: [],
+            origin: undefined,
+            destination: undefined,
+            isHit: false,
+            // cast: literal matches the no-move constructions elsewhere in this function
+          } as BackgammonMoveCompletedNoMove
+        }
+      }
+    }
 
     // Check if all moves are no-moves and auto-complete the play
     const allMovesAreNoMoves = allMoves.every(

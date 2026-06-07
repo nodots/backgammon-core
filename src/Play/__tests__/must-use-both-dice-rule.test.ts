@@ -161,13 +161,25 @@ describe('Play - must use both dice (stranded-die bug)', () => {
       expect([...(play.dieValuesPlayableAtStart ?? [])].sort()).toEqual([3, 6])
     })
 
-    test('playing the smaller die (3) is rejected', () => {
+    test('initialize converts the smaller-die move to a completed no-move', () => {
       const board = makeBoard()
       const play = Play.initialize(board, movingPlayer('white', 'clockwise', [6, 3]))
-      const thrown = captureThrow(() =>
-        Play.move(board, play, originAt(board, 'clockwise', 9), 3)
+      const smaller = play.moves.find((m) => m.dieValue === 3)
+      const larger = play.moves.find((m) => m.dieValue === 6)
+      expect(smaller?.stateKind).toBe('completed')
+      expect(smaller?.moveKind).toBe('no-move')
+      expect(larger?.stateKind).toBe('ready')
+    })
+
+    test('attempting the smaller die (3) plays the larger (6) instead', () => {
+      const board = makeBoard()
+      const play = Play.initialize(board, movingPlayer('white', 'clockwise', [6, 3]))
+      const result = Play.move(board, play, originAt(board, 'clockwise', 9), 3)
+      const executed = result.play.moves.find(
+        (m) => m.stateKind === 'completed' && m.moveKind !== 'no-move'
       )
-      expect(thrown?.name).toBe('MustUseLargerDieError')
+      expect(executed?.dieValue).toBe(6)
+      expect(diceUsed(result.play)).toBe(1)
     })
 
     test('playing the larger die (6) is accepted', () => {
@@ -175,6 +187,119 @@ describe('Play - must use both dice (stranded-die bug)', () => {
       const play = Play.initialize(board, movingPlayer('white', 'clockwise', [6, 3]))
       const result = Play.move(board, play, originAt(board, 'clockwise', 9), 6)
       expect(diceUsed(result.play)).toBe(1)
+    })
+  })
+
+  describe('last checker bears off with either die (production game 2d98cf14)', () => {
+    // One checker on the player's 2-point, 14 already off. Roll [3,5]: either
+    // die bears off and ends the game, so maxDiceUsable is 1 and the rules
+    // require the larger die (5). The robot picked the 3 and every turn
+    // attempt was rejected, freezing the game in 'moving'.
+    const makeBoardClockwise = (): BackgammonBoard =>
+      Board.buildBoard([
+        {
+          position: { clockwise: 2, counterclockwise: 23 },
+          checkers: { color: 'white', qty: 1 },
+        },
+        {
+          position: 'off',
+          direction: 'clockwise',
+          checkers: { color: 'white', qty: 14 },
+        },
+        {
+          position: { clockwise: 13, counterclockwise: 12 },
+          checkers: { color: 'black', qty: 5 },
+        },
+        {
+          position: { clockwise: 19, counterclockwise: 6 },
+          checkers: { color: 'black', qty: 5 },
+        },
+        {
+          position: { clockwise: 24, counterclockwise: 1 },
+          checkers: { color: 'black', qty: 5 },
+        },
+      ])
+
+    test('initialize prunes the smaller die: 3 is a no-move, 5 is a ready bear-off', () => {
+      const board = makeBoardClockwise()
+      const play = Play.initialize(board, movingPlayer('white', 'clockwise', [3, 5]))
+      expect(play.maxDiceUsable).toBe(1)
+      expect([...(play.dieValuesPlayableAtStart ?? [])].sort()).toEqual([3, 5])
+      const smaller = play.moves.find((m) => m.dieValue === 3)
+      const larger = play.moves.find((m) => m.dieValue === 5)
+      expect(smaller?.stateKind).toBe('completed')
+      expect(smaller?.moveKind).toBe('no-move')
+      expect(larger?.stateKind).toBe('ready')
+      expect(larger?.moveKind).toBe('bear-off')
+    })
+
+    test('moving the last checker bears off with the 5, no throw', () => {
+      const board = makeBoardClockwise()
+      const play = Play.initialize(board, movingPlayer('white', 'clockwise', [3, 5]))
+      const result = Play.move(board, play, originAt(board, 'clockwise', 2))
+      const executed = result.play.moves.find(
+        (m) => m.stateKind === 'completed' && m.moveKind !== 'no-move'
+      )
+      expect(executed?.dieValue).toBe(5)
+      expect(diceUsed(result.play)).toBe(1)
+      expect(result.play.moves.some((m) => m.stateKind === 'ready')).toBe(false)
+      expect(result.board.off.clockwise.checkers.length).toBe(15)
+    })
+
+    test('roll order [5,3] behaves the same', () => {
+      const board = makeBoardClockwise()
+      const play = Play.initialize(board, movingPlayer('white', 'clockwise', [5, 3]))
+      const smaller = play.moves.find((m) => m.dieValue === 3)
+      expect(smaller?.moveKind).toBe('no-move')
+      const result = Play.move(board, play, originAt(board, 'clockwise', 2))
+      const executed = result.play.moves.find(
+        (m) => m.stateKind === 'completed' && m.moveKind !== 'no-move'
+      )
+      expect(executed?.dieValue).toBe(5)
+      expect(result.board.off.clockwise.checkers.length).toBe(15)
+    })
+
+    test('counterclockwise mirror behaves the same', () => {
+      const board = Board.buildBoard([
+        {
+          position: { clockwise: 23, counterclockwise: 2 },
+          checkers: { color: 'white', qty: 1 },
+        },
+        {
+          position: 'off',
+          direction: 'counterclockwise',
+          checkers: { color: 'white', qty: 14 },
+        },
+        {
+          position: { clockwise: 12, counterclockwise: 13 },
+          checkers: { color: 'black', qty: 5 },
+        },
+        {
+          position: { clockwise: 6, counterclockwise: 19 },
+          checkers: { color: 'black', qty: 5 },
+        },
+        {
+          position: { clockwise: 1, counterclockwise: 24 },
+          checkers: { color: 'black', qty: 5 },
+        },
+      ])
+      const play = Play.initialize(
+        board,
+        movingPlayer('white', 'counterclockwise', [3, 5])
+      )
+      expect(play.maxDiceUsable).toBe(1)
+      const smaller = play.moves.find((m) => m.dieValue === 3)
+      expect(smaller?.moveKind).toBe('no-move')
+      const result = Play.move(
+        board,
+        play,
+        originAt(board, 'counterclockwise', 2)
+      )
+      const executed = result.play.moves.find(
+        (m) => m.stateKind === 'completed' && m.moveKind !== 'no-move'
+      )
+      expect(executed?.dieValue).toBe(5)
+      expect(result.board.off.counterclockwise.checkers.length).toBe(15)
     })
   })
 
