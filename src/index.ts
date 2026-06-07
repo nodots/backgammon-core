@@ -51,15 +51,21 @@ export { RobotAIRegistry } from './AI/RobotAIRegistry'
 
 // Export logger utilities for consumers to configure
 export {
+  addTransport,
+  ConsoleTransport,
   debug,
   error,
   info,
+  Logger,
   logger,
+  removeTransport,
   setConsoleEnabled,
   setIncludeCallerInfo,
   setLogLevel,
   warn,
+  type LogEvent,
   type LogLevel,
+  type Transport,
 } from './utils/logger'
 
 // Re-export all types from @nodots/backgammon-types for convenience

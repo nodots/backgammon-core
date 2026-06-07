@@ -1,13 +1,20 @@
 /**
- * Logger utility that prefixes all logs with '[Core]'
+ * Logger with pluggable transports. Default behavior is unchanged from the
+ * pre-transport implementation: a single ConsoleTransport that prints
+ * `[source] [timestamp] [LEVEL] message | Called from: ...` to console.*.
+ *
+ * Additional sinks (DB, Datadog, remote HTTP) register themselves at app
+ * boot via `logger.addTransport(...)`. Transports must be fail-soft:
+ * never throw out of `write`.
  */
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error'
 
-interface LoggerOptions {
-  level?: LogLevel
-  enableConsole?: boolean
-  includeCallerInfo?: boolean
+const LEVEL_RANK: Record<LogLevel, number> = {
+  debug: 0,
+  info: 1,
+  warn: 2,
+  error: 3,
 }
 
 interface CallerInfo {
@@ -18,26 +25,77 @@ interface CallerInfo {
   stack?: string
 }
 
+export interface LogEvent {
+  level: LogLevel
+  message: string
+  args: unknown[]
+  timestamp: string
+  source: string
+  caller?: CallerInfo | null
+  context?: Record<string, unknown>
+}
+
+export interface Transport {
+  name: string
+  minLevel?: LogLevel
+  write(event: LogEvent): void
+}
+
+export class ConsoleTransport implements Transport {
+  name = 'console'
+  minLevel: LogLevel
+  enabled: boolean
+
+  constructor(options: { minLevel?: LogLevel; enabled?: boolean } = {}) {
+    this.minLevel = options.minLevel ?? 'debug'
+    this.enabled = options.enabled !== false
+  }
+
+  write(event: LogEvent): void {
+    if (!this.enabled) return
+    const prefix = `[${event.source}]`
+    let formatted = `${prefix} [${event.timestamp}] [${event.level.toUpperCase()}] ${event.message}`
+    if (event.caller) {
+      formatted += ` | Called from: ${event.caller.functionName} (${event.caller.fileName}:${event.caller.lineNumber})`
+    }
+    const fn =
+      event.level === 'debug'
+        ? console.debug
+        : event.level === 'info'
+        ? console.info
+        : event.level === 'warn'
+        ? console.warn
+        : console.error
+    fn(formatted, ...event.args)
+  }
+}
+
+interface LoggerOptions {
+  level?: LogLevel
+  enableConsole?: boolean
+  includeCallerInfo?: boolean
+  source?: string
+}
+
 class Logger {
   private level: LogLevel
-  private enableConsole: boolean
   private includeCallerInfo: boolean
-  private readonly prefix = '[Core]'
+  private readonly source: string
+  private transports: Transport[] = []
+  private consoleTransport: ConsoleTransport
 
   constructor(options: LoggerOptions = {}) {
     this.level = options.level || 'info'
-    this.enableConsole = options.enableConsole !== false
     this.includeCallerInfo = options.includeCallerInfo !== false
+    this.source = options.source || 'Core'
+    this.consoleTransport = new ConsoleTransport({
+      enabled: options.enableConsole !== false,
+    })
+    this.transports.push(this.consoleTransport)
   }
 
   private shouldLog(messageLevel: LogLevel): boolean {
-    const levels: Record<LogLevel, number> = {
-      debug: 0,
-      info: 1,
-      warn: 2,
-      error: 3,
-    }
-    return levels[messageLevel] >= levels[this.level]
+    return LEVEL_RANK[messageLevel] >= LEVEL_RANK[this.level]
   }
 
   private getCallerInfo(): CallerInfo | null {
@@ -47,10 +105,8 @@ class Logger {
       const stack = new Error().stack
       if (!stack) return null
 
-      // Parse the stack trace to get caller information
       const stackLines = stack.split('\n')
 
-      // Find the first line that's not from the logger itself
       let callerLine = ''
       for (let i = 0; i < stackLines.length; i++) {
         const line = stackLines[i]
@@ -65,7 +121,6 @@ class Logger {
 
       if (!callerLine) return null
 
-      // Parse the caller line
       const match = callerLine.match(/at\s+(.+?)\s+\((.+?):(\d+):(\d+)\)/)
       if (match) {
         return {
@@ -77,7 +132,6 @@ class Logger {
         }
       }
 
-      // Fallback for different stack formats
       const fallbackMatch = callerLine.match(/at\s+(.+?):(\d+):(\d+)/)
       if (fallbackMatch) {
         return {
@@ -95,47 +149,40 @@ class Logger {
     }
   }
 
-  private formatMessage(
-    level: LogLevel,
-    message: string,
-    ...args: any[]
-  ): string {
-    const timestamp = new Date().toISOString()
-    const callerInfo = this.getCallerInfo()
-
-    let formattedMessage = `${
-      this.prefix
-    } [${timestamp}] [${level.toUpperCase()}] ${message}`
-
-    if (callerInfo) {
-      formattedMessage += ` | Called from: ${callerInfo.functionName} (${callerInfo.fileName}:${callerInfo.lineNumber})`
+  private dispatch(level: LogLevel, message: string, args: unknown[]): void {
+    if (!this.shouldLog(level)) return
+    const event: LogEvent = {
+      level,
+      message,
+      args,
+      timestamp: new Date().toISOString(),
+      source: this.source,
+      caller: this.getCallerInfo(),
     }
-
-    return formattedMessage
+    for (const t of this.transports) {
+      if (t.minLevel && LEVEL_RANK[level] < LEVEL_RANK[t.minLevel]) continue
+      try {
+        t.write(event)
+      } catch {
+        // Transports must never break the caller.
+      }
+    }
   }
 
   debug(message: string, ...args: any[]): void {
-    if (this.shouldLog('debug') && this.enableConsole) {
-      console.debug(this.formatMessage('debug', message), ...args)
-    }
+    this.dispatch('debug', message, args)
   }
 
   info(message: string, ...args: any[]): void {
-    if (this.shouldLog('info') && this.enableConsole) {
-      console.info(this.formatMessage('info', message), ...args)
-    }
+    this.dispatch('info', message, args)
   }
 
   warn(message: string, ...args: any[]): void {
-    if (this.shouldLog('warn') && this.enableConsole) {
-      console.warn(this.formatMessage('warn', message), ...args)
-    }
+    this.dispatch('warn', message, args)
   }
 
   error(message: string, ...args: any[]): void {
-    if (this.shouldLog('error') && this.enableConsole) {
-      console.error(this.formatMessage('error', message), ...args)
-    }
+    this.dispatch('error', message, args)
   }
 
   setLevel(level: LogLevel): void {
@@ -143,7 +190,7 @@ class Logger {
   }
 
   setConsoleEnabled(enabled: boolean): void {
-    this.enableConsole = enabled
+    this.consoleTransport.enabled = enabled
   }
 
   setIncludeCallerInfo(enabled: boolean): void {
@@ -153,11 +200,20 @@ class Logger {
   getDetailedCallerInfo(): CallerInfo | null {
     return this.getCallerInfo()
   }
+
+  addTransport(transport: Transport): void {
+    this.transports.push(transport)
+  }
+
+  removeTransport(name: string): void {
+    this.transports = this.transports.filter((t) => t.name !== name)
+  }
+
+  getTransports(): readonly Transport[] {
+    return this.transports
+  }
 }
 
-// Create default logger instance with env-based controls for speed.
-// Guard the `process` access so core can be bundled into the browser;
-// without this the module throws ReferenceError at import time.
 const env: Record<string, string | undefined> =
   typeof process !== 'undefined' && process.env ? process.env : {}
 const envLevel = (env.NODOTS_LOG_LEVEL as LogLevel) || 'info'
@@ -170,13 +226,10 @@ const defaultLogger = new Logger({
   includeCallerInfo: includeCaller,
 })
 
-// Export the default logger instance
 export const logger = defaultLogger
 
-// Export the Logger class for creating custom instances
 export { Logger }
 
-// Export convenience functions
 export const debug = (message: string, ...args: any[]) =>
   defaultLogger.debug(message, ...args)
 export const info = (message: string, ...args: any[]) =>
@@ -186,10 +239,14 @@ export const warn = (message: string, ...args: any[]) =>
 export const error = (message: string, ...args: any[]) =>
   defaultLogger.error(message, ...args)
 
-// Export utility functions
 export const setLogLevel = (level: LogLevel) => defaultLogger.setLevel(level)
 export const setConsoleEnabled = (enabled: boolean) =>
   defaultLogger.setConsoleEnabled(enabled)
 export const setIncludeCallerInfo = (enabled: boolean) =>
   defaultLogger.setIncludeCallerInfo(enabled)
 export const getDetailedCallerInfo = () => defaultLogger.getDetailedCallerInfo()
+
+export const addTransport = (transport: Transport) =>
+  defaultLogger.addTransport(transport)
+export const removeTransport = (name: string) =>
+  defaultLogger.removeTransport(name)
