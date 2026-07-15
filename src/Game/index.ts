@@ -7,7 +7,6 @@ import {
   BackgammonDieValue,
   BackgammonGame,
   BackgammonGameDoubled,
-  BackgammonGameMoved,
   BackgammonGameMoving,
   BackgammonGameRolledForStart,
   BackgammonGameRolling,
@@ -33,7 +32,7 @@ import { exportToGnuPositionId } from '../Board/gnuPositionId'
 import { Checker } from '../Checker'
 import { Cube } from '../Cube'
 import { BackgammonMoveDirection } from '../Play'
-import { debug, logger } from '../utils/logger'
+import { logger } from '../utils/logger'
 import {
   acceptDouble,
   canAcceptDouble,
@@ -50,6 +49,10 @@ import {
   canRollForStart,
 } from './guards'
 import { restoreState, rollForStart } from './lifecycle'
+import {
+  confirmTurnWithRobotAutomation,
+  handleRobotMovedState,
+} from './robot'
 import {
   checkAndCompleteTurn,
   confirmTurn,
@@ -362,22 +365,7 @@ export class Game {
 
   public static confirmTurn = confirmTurn
 
-  /**
-   * Handle robot automation for games in 'moved' state
-   * If the active player is a robot and the game is in 'moved' state, automatically confirm the turn
-   * @param game - Game in any state
-   * @returns Game with turn confirmed if robot automation was applied, otherwise unchanged
-   */
-  public static handleRobotMovedState = function handleRobotMovedState(
-    game: BackgammonGame
-  ): BackgammonGame {
-    // Only handle games in 'moved' state with robot active player
-    if (game.stateKind === 'moved' && game.activePlayer.isRobot) {
-      debug('Robot in moved state, auto-confirming turn')
-      return Game.confirmTurn(game as BackgammonGameMoved)
-    }
-    return game
-  }
+  public static handleRobotMovedState = handleRobotMovedState
 
   public static executeRobotTurn = executeRobotTurn
 
@@ -516,39 +504,7 @@ export class Game {
   }
 
 
-  /**
-   * Async wrapper for confirmTurn that handles robot automation
-   * @param game - Game in 'moving' state
-   * @returns Promise<BackgammonGame> - Updated game state with robot automation if needed
-   */
-  public static confirmTurnWithRobotAutomation =
-    async function confirmTurnWithRobotAutomation(
-      game: BackgammonGameMoved
-    ): Promise<BackgammonGame> {
-      // Call the pure sync function first
-      const confirmedGame = Game.confirmTurn(game)
-
-      // Check if the next player is a robot and handle automation
-      if (confirmedGame.activePlayer?.isRobot) {
-        try {
-          // Dynamic import to avoid circular dependencies
-          // Robot automation moved to @nodots/backgammon-robots package
-
-          // Robot automation is now external - return game as-is
-          logger.info('🤖 Robot automation is now handled externally')
-          return confirmedGame
-        } catch (error) {
-          logger.error(
-            '🤖 Robot automation error during turn transition (confirmTurn):',
-            error
-          )
-          // Return original game state if robot automation throws
-          return confirmedGame
-        }
-      }
-
-      return confirmedGame
-    }
+  public static confirmTurnWithRobotAutomation = confirmTurnWithRobotAutomation
 
   // processRobotTurn method removed - now handled by @nodots/backgammon-robots package
 
