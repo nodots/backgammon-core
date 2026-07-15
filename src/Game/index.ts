@@ -88,6 +88,8 @@ export class Game {
    */
   get gnuPositionId(): string {
     try {
+      // as any: the Game class instance is structurally a BackgammonGame but
+      // TS does not treat the class as assignable to the discriminated union.
       return exportToGnuPositionId(this as any)
     } catch (error) {
       logger.warn('Failed to generate gnuPositionId:', error)

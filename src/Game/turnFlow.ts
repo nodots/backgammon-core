@@ -752,14 +752,14 @@ export function move(
 ): BackgammonGameMoving | BackgammonGameMoved | BackgammonGameCompleted {
   // Push a pre-move snapshot to the turn-local undo stack
   try {
-    const ap: any = (game as any).activePlay
+    const ap = game.activePlay
     if (ap) {
-      if (!ap.undo) ap.undo = { frames: [] }
+      const undo = ap.undo ?? (ap.undo = { frames: [] })
       const snapshot =
         typeof structuredClone === 'function'
           ? structuredClone(game)
-          : (JSON.parse(JSON.stringify(game)) as any)
-      ap.undo.frames.push(snapshot)
+          : (JSON.parse(JSON.stringify(game)) as BackgammonGameMoving)
+      undo.frames.push(snapshot)
     }
   } catch (e) {
     logger?.warn?.('Failed to push undo snapshot in Game.move', e)
@@ -1207,14 +1207,14 @@ export function executeAndRecalculate(
 
   // Push a pre-move snapshot
   try {
-    const ap: any = (game as any).activePlay
+    const ap = game.activePlay
     if (ap) {
-      if (!ap.undo) ap.undo = { frames: [] }
+      const undo = ap.undo ?? (ap.undo = { frames: [] })
       const snapshot =
         typeof structuredClone === 'function'
           ? structuredClone(game)
-          : (JSON.parse(JSON.stringify(game)) as any)
-      ap.undo.frames.push(snapshot)
+          : (JSON.parse(JSON.stringify(game)) as BackgammonGameMoving)
+      undo.frames.push(snapshot)
     }
   } catch (e) {
     logger?.warn?.('Failed to push undo snapshot before move', e)

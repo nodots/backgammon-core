@@ -35,7 +35,7 @@ export function canOfferDouble(
     game.cube.stateKind !== 'offered' &&
     (!game.cube.owner || game.cube.owner.id === player.id) &&
     // Disallow repeat doubles in same turn unless Beaver is implemented
-    (game.cube as any).offeredThisTurnBy?.id !== player.id
+    game.cube.offeredThisTurnBy?.id !== player.id
   )
 }
 
@@ -107,13 +107,16 @@ export function acceptDouble(
     ...offeringPlayer,
     stateKind: 'rolling',
     dice: Dice.initialize(offeringPlayer.color, 'rolling'),
-    rollForStartValue: (offeringPlayer as any).rollForStartValue,
+    // Non-null: an active player mid-game has a rollForStartValue; the base
+    // player type declares it optional, the rolling player type requires it.
+    rollForStartValue: offeringPlayer.rollForStartValue!,
   }
   const updatedInactivePlayer: BackgammonPlayerInactive = {
     ...player,
     stateKind: 'inactive',
     dice: Dice.initialize(player.color, 'inactive'),
-    rollForStartValue: (player as any).rollForStartValue,
+    // Non-null: see above; inactive player type also requires rollForStartValue.
+    rollForStartValue: player.rollForStartValue!,
   }
 
   const updatedPlayers = game.players.map((p) => {
@@ -130,8 +133,10 @@ export function acceptDouble(
     activePlayer: updatedActivePlayer,
     inactivePlayer: updatedInactivePlayer,
     activeColor: updatedActivePlayer.color,
-    activePlay: undefined as any,
-  } as any)
+    activePlay: undefined,
+    // as unknown as BackgammonGameRolling: the spread yields a generic players
+    // array (not the rolling-game tuple) that TS can't narrow structurally.
+  } as unknown as BackgammonGameRolling)
 }
 
 export function canRefuseDouble(
