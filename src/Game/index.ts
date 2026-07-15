@@ -37,9 +37,7 @@ import { Dice } from '../Dice'
 import { BackgammonMoveDirection, Play } from '../Play'
 import type { MoveExecutionOptions } from '../Play'
 import { debug, logger } from '../utils/logger'
-
-// Hardcoded constant to avoid import issues during build
-const MAX_PIP_COUNT = 167
+import { createBaseGameProperties, incrementStateVersion } from './shared'
 
 export * from '../index'
 // Import tuple aliases from types package
@@ -150,35 +148,6 @@ export class Game {
     return game
   }
 
-  // Helper to create base game properties
-  private static createBaseGameProperties() {
-    return {
-      createdAt: new Date(),
-      version: `v4.0`, // FIXME
-      stateVersion: 1, // Initialize state version for equality checks
-      rules: {},
-      settings: {
-        allowUndo: false,
-        allowResign: true,
-        autoPlay: false,
-        showHints: false,
-        showProbabilities: false,
-      },
-    }
-  }
-
-  /**
-   * Increments the stateVersion field for change detection.
-   * This allows clients to quickly compare if game state has changed
-   * without performing deep equality checks.
-   */
-  private static incrementStateVersion<T extends BackgammonGame>(game: T): T {
-    return {
-      ...game,
-      stateVersion: (game.stateVersion ?? 0) + 1,
-    }
-  }
-
   /**
    * @internal - Low-level constructor for scripts and internal use only.
    * Use Game.createNewGame() for normal game creation.
@@ -276,7 +245,7 @@ export class Game {
     switch (stateKind) {
       case 'rolling-for-start':
         return {
-          ...Game.createBaseGameProperties(),
+          ...createBaseGameProperties(),
           id,
           stateKind,
           players,
@@ -288,7 +257,7 @@ export class Game {
         if (!activePlayer) throw new Error('Active player must be provided')
         if (!inactivePlayer) throw new Error('Inactive player must be provided')
         return {
-          ...Game.createBaseGameProperties(),
+          ...createBaseGameProperties(),
           id,
           stateKind,
           players,
@@ -303,7 +272,7 @@ export class Game {
         if (!activePlayer) throw new Error('Active player must be provided')
         if (!inactivePlayer) throw new Error('Inactive player must be provided')
         return {
-          ...Game.createBaseGameProperties(),
+          ...createBaseGameProperties(),
           id,
           stateKind,
           players,
@@ -319,7 +288,7 @@ export class Game {
         if (!inactivePlayer) throw new Error('Inactive player must be provided')
         if (!activePlay) throw new Error('Active play must be provided')
         return {
-          ...Game.createBaseGameProperties(),
+          ...createBaseGameProperties(),
           id,
           stateKind,
           players,
@@ -395,7 +364,7 @@ export class Game {
       (p) => p.color !== activeColor
     )!
 
-    return Game.incrementStateVersion({
+    return incrementStateVersion({
       ...game,
       stateKind: 'rolled-for-start',
       activeColor,
@@ -476,7 +445,7 @@ export class Game {
             { expectedMoveCount, actualMoveCount, currentRoll }
           )
           // Player has no legal moves, return game in 'moved' state
-          return Game.incrementStateVersion({
+          return incrementStateVersion({
             ...game,
             stateKind: 'moved',
             activePlayer: movingPlayer,
@@ -598,7 +567,7 @@ export class Game {
           debug(
             'Game.roll: All moves completed after sanitization, transitioning to moved state'
           )
-          return Game.incrementStateVersion({
+          return incrementStateVersion({
             ...game,
             stateKind: 'moved',
             activePlayer: movingPlayer,
@@ -646,7 +615,7 @@ export class Game {
           movableContainerIds
         )
 
-        return Game.incrementStateVersion({
+        return incrementStateVersion({
           ...game,
           stateKind: 'moving',
           players: [
@@ -691,7 +660,7 @@ export class Game {
           debug(
             'Game.roll: All moves auto-completed (doubled case) - no legal moves available, transitioning to moved state'
           )
-          return Game.incrementStateVersion({
+          return incrementStateVersion({
             ...game,
             stateKind: 'moved',
             activePlayer: playerMoving,
@@ -767,7 +736,7 @@ export class Game {
           debug(
             'Game.roll: All moves completed after sanitization (doubled case), transitioning to moved state'
           )
-          return Game.incrementStateVersion({
+          return incrementStateVersion({
             ...game,
             stateKind: 'moved',
             activePlayer: playerMoving,
@@ -828,7 +797,7 @@ export class Game {
           board: updatedBoard,
         } as BackgammonGameMoving
 
-        return Game.incrementStateVersion(movingGame)
+        return incrementStateVersion(movingGame)
       }
 
       case 'rolling': {
@@ -857,7 +826,7 @@ export class Game {
           debug(
             'Game.roll: All moves auto-completed (rolling case) - no legal moves available, transitioning to moved state'
           )
-          return Game.incrementStateVersion({
+          return incrementStateVersion({
             ...game,
             stateKind: 'moved',
             activePlayer: playerMoving,
@@ -928,7 +897,7 @@ export class Game {
           debug(
             'Game.roll: All moves completed after sanitization (rolling case), transitioning to moved state'
           )
-          return Game.incrementStateVersion({
+          return incrementStateVersion({
             ...game,
             stateKind: 'moved',
             activePlayer: playerMoving,
@@ -995,7 +964,7 @@ export class Game {
           board: updatedBoard,
         } as BackgammonGameMoving
 
-        return Game.incrementStateVersion(movingGame)
+        return incrementStateVersion(movingGame)
       }
 
       default:
@@ -1114,7 +1083,7 @@ export class Game {
     ) as unknown as BackgammonPlayers
 
     // Return the same state type as input
-    return Game.incrementStateVersion({
+    return incrementStateVersion({
       ...game,
       players: updatedPlayers,
       activePlayer: updatedActivePlayer,
@@ -1395,7 +1364,7 @@ export class Game {
 
       logger.info(`🏁 [Game] Game ${game.id} completed - Winner: ${winner.id}`)
 
-      return Game.incrementStateVersion({
+      return incrementStateVersion({
         ...game,
         stateKind: 'completed',
         winner: winner.id,
@@ -1450,7 +1419,7 @@ export class Game {
       stateKind: updatedActivePlay.stateKind === 'moved' ? 'moved' : 'moving',
     }
 
-    return Game.incrementStateVersion({
+    return incrementStateVersion({
       ...game,
       stateKind: gameStateKind,
       board,
@@ -1515,7 +1484,7 @@ export class Game {
     }
 
     // Create moved state - human player's turn is complete, waiting for dice click confirmation
-    return Game.incrementStateVersion({
+    return incrementStateVersion({
       ...game,
       stateKind: 'moved',
     } as BackgammonGameMoved)
@@ -1872,7 +1841,7 @@ export class Game {
     // For now, keep the original behavior but document the fix location
 
     // Return game with next player's turn
-    return Game.incrementStateVersion({
+    return incrementStateVersion({
       ...game,
       cube: { ...(game.cube as any), offeredThisTurnBy: undefined } as any,
       stateKind: 'rolling',
@@ -2130,7 +2099,7 @@ export class Game {
         p.id === winner.id ? winner : p
       ) as BackgammonPlayers
 
-      return Game.incrementStateVersion({
+      return incrementStateVersion({
         ...game,
         stateKind: 'completed',
         winner: winner.id,
@@ -2180,7 +2149,7 @@ export class Game {
       return p
     }) as BackgammonPlayers
 
-    return Game.incrementStateVersion({
+    return incrementStateVersion({
       ...game,
       stateKind: 'rolling',
       cube: updatedCube,
@@ -2256,7 +2225,7 @@ export class Game {
       `🏆 [Game] Double refused - Winner: ${winner.id}, Points won: ${pointsWon}`
     )
 
-    return Game.incrementStateVersion({
+    return incrementStateVersion({
       ...game,
       stateKind: 'completed',
       winner: winner.id,
@@ -2326,7 +2295,7 @@ export class Game {
       `Resignation - Winner: ${winner.id}, Points won: ${pointsWon} (${baseMultiplier}x base * ${cubeValue} cube)`
     )
 
-    return Game.incrementStateVersion({
+    return incrementStateVersion({
       ...game,
       stateKind: 'completed',
       winner: winner.id,
@@ -2447,7 +2416,7 @@ export class Game {
       : undefined
 
     // Return game in 'doubled' state (waiting for opponent to accept/refuse)
-    return Game.incrementStateVersion({
+    return incrementStateVersion({
       ...game,
       stateKind: 'doubled',
       cube: updatedCube,
