@@ -37,6 +37,12 @@ import { Dice } from '../Dice'
 import { BackgammonMoveDirection, Play } from '../Play'
 import type { MoveExecutionOptions } from '../Play'
 import { debug, logger } from '../utils/logger'
+import {
+  canGetPossibleMoves,
+  canPlayerRoll,
+  canRoll,
+  canRollForStart,
+} from './guards'
 import { createBaseGameProperties, incrementStateVersion } from './shared'
 
 export * from '../index'
@@ -2004,46 +2010,28 @@ export class Game {
    * Validates if rolling is allowed in the current game state
    */
   public static canRoll(game: BackgammonGame): boolean {
-    return (
-      game.stateKind === 'rolled-for-start' ||
-      game.stateKind === 'rolling' ||
-      game.stateKind === 'doubled'
-    )
+    return canRoll(game)
   }
 
   /**
    * Validates if rolling for start is allowed in the current game state
    */
   public static canRollForStart(game: BackgammonGame): boolean {
-    return game.stateKind === 'rolling-for-start'
+    return canRollForStart(game)
   }
 
   /**
    * Validates if the specified player can roll in the current game state
    */
   public static canPlayerRoll(game: BackgammonGame, playerId: string): boolean {
-    if (!Game.canRoll(game)) {
-      return false
-    }
-
-    // Check if the player is the active player
-    if (game.activeColor) {
-      const activePlayer = game.players.find(
-        (p) => p.color === game.activeColor
-      )
-      if (!activePlayer || activePlayer.id !== playerId) {
-        return false
-      }
-    }
-
-    return true
+    return canPlayerRoll(game, playerId)
   }
 
   /**
    * Validates if moves can be calculated for the current game state
    */
   public static canGetPossibleMoves(game: BackgammonGame): boolean {
-    return game.stateKind === 'moving'
+    return canGetPossibleMoves(game)
   }
 
   // --- Checker Management ---
