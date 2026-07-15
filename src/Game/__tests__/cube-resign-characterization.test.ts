@@ -75,6 +75,36 @@ describe('Game.canAcceptDouble() / acceptDouble() — characterization', () => {
       'Cannot accept double'
     )
   })
+
+  it('acceptDouble at 64 completes the game (maxxed cube)', () => {
+    const doubled = Game.double(buildRollingGame() as any)
+    const offering = doubled.cube.offeredBy!
+    const accepting = doubled.players.find((p) => p.id !== offering.id)!
+    // Force the offered value to the max; accepting it ends the game.
+    const at64 = { ...doubled, cube: { ...doubled.cube, value: 64 } } as any
+    const done = Game.acceptDouble(at64, accepting as any)
+    expect(done.stateKind).toBe('completed')
+    expect((done as any).pointsWon).toBe(64)
+    expect(done.cube.stateKind).toBe('maxxed')
+  })
+})
+
+describe('Game.refuseDouble() — characterization', () => {
+  it('reverts to a doubled cube at half value when refusing a non-first double', () => {
+    const doubled = Game.double(buildRollingGame() as any)
+    const offering = doubled.cube.offeredBy!
+    const refusing = doubled.players.find((p) => p.id !== offering.id)!
+    // Cube already at 4 before this offer (a re-double, not the first double).
+    const at4 = {
+      ...doubled,
+      cube: { ...doubled.cube, value: 4, owner: offering },
+    } as any
+    const done = Game.refuseDouble(at4, refusing as any)
+    expect(done.stateKind).toBe('completed')
+    // Winner gets the pre-double value: 4 / 2 = 2.
+    expect((done as any).pointsWon).toBe(2)
+    expect(done.cube.stateKind).toBe('doubled')
+  })
 })
 
 describe('Game.resign() — characterization', () => {
