@@ -3,8 +3,6 @@ import {
   BackgammonChecker,
   BackgammonColor,
   BackgammonCube,
-  BackgammonCubeValue,
-  BackgammonDieValue,
   BackgammonGame,
   BackgammonGameDoubled,
   BackgammonGameMoving,
@@ -12,19 +10,15 @@ import {
   BackgammonGameRolling,
   BackgammonGameRollingForStart,
   BackgammonGameStateKind,
-  BackgammonMoveSkeleton,
   BackgammonPlay,
   BackgammonPlayer,
   BackgammonPlayerActive,
-  BackgammonPlayerDoubled,
   BackgammonPlayerInactive,
   BackgammonPlayerMoving,
   BackgammonPlayerRolledForStart,
   BackgammonPlayerRolling,
   BackgammonPlayers,
-  BackgammonPlayerWinner,
   BackgammonPlayMoving,
-  BackgammonRoll,
 } from '@nodots/backgammon-types'
 import { generateId, Player } from '..'
 import { Board } from '../Board'
@@ -72,10 +66,8 @@ export * from '../index'
 // Import tuple aliases from types package
 import type {
   BackgammonGameCompleted,
-  BackgammonPlayersMovingTuple,
   BackgammonPlayersRolledForStartTuple,
   BackgammonPlayersRollingForStartTuple,
-  BackgammonPlayersRollingTuple,
 } from '@nodots/backgammon-types'
 import { executeRobotTurn } from './executeRobotTurn'
 
