@@ -29,10 +29,14 @@ import { BackgammonMoveDirection } from '../Play'
 import { logger } from '../utils/logger'
 import {
   acceptDouble,
+  acceptResign,
   canAcceptDouble,
   canOfferDouble,
   canRefuseDouble,
+  canRespondToResign,
+  declineResign,
   double,
+  offerResign,
   refuseDouble,
   resign,
 } from './cube'
@@ -495,6 +499,35 @@ export class Game {
     points: 1 | 2 | 3 = 1
   ): BackgammonGameCompleted {
     return resign(game, resigningPlayer, points)
+  }
+
+  public static offerResign(
+    game: BackgammonGame,
+    resigningPlayer: BackgammonPlayer,
+    points: 1 | 2 | 3 = 1
+  ): BackgammonGame {
+    return offerResign(game, resigningPlayer, points)
+  }
+
+  public static canRespondToResign(
+    game: BackgammonGame,
+    player: BackgammonPlayer
+  ): boolean {
+    return canRespondToResign(game, player)
+  }
+
+  public static acceptResign(
+    game: BackgammonGame,
+    acceptingPlayer: BackgammonPlayer
+  ): BackgammonGameCompleted {
+    return acceptResign(game, acceptingPlayer)
+  }
+
+  public static declineResign(
+    game: BackgammonGame,
+    decliningPlayer: BackgammonPlayer
+  ): BackgammonGame {
+    return declineResign(game, decliningPlayer)
   }
 
 
