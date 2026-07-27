@@ -11,6 +11,7 @@ import {
   BackgammonPlayerRolling,
   BackgammonPlayers,
   BackgammonPlayerWinner,
+  BackgammonResignationOffer,
 } from '@nodots/backgammon-types'
 import { Dice } from '../Dice'
 import { logger } from '../utils/logger'
@@ -290,6 +291,105 @@ export function resign(
     activePlay: undefined,
     activePlayer: winner,
   } as BackgammonGameCompleted) // as BackgammonGameCompleted: narrowing spread object to completed game type
+}
+
+/**
+ * Offer to resign for the given points (1=simple, 2=gammon, 3=backgammon).
+ * The game's stateKind is unchanged while the offer is pending; the opponent
+ * must accept (game completes at the offered value) or decline (play resumes).
+ * Mirrors the double/take flow: resign() below is the unilateral legacy path
+ * and remains only as the completion step used by acceptResign().
+ */
+export function offerResign(
+  game: BackgammonGame,
+  resigningPlayer: BackgammonPlayer,
+  points: 1 | 2 | 3 = 1
+): BackgammonGame {
+  if (game.stateKind === 'completed') {
+    throw new Error('Cannot resign a completed game')
+  }
+  if (game.settings?.allowResign === false) {
+    throw new Error('Resignation is not allowed for this game')
+  }
+  if (game.resignationOffer) {
+    throw new Error('A resignation offer is already pending')
+  }
+  if (!game.players.some((p) => p.id === resigningPlayer.id)) {
+    throw new Error('Resigning player is not in this game')
+  }
+
+  const offer: BackgammonResignationOffer = {
+    offeredById: resigningPlayer.id,
+    points,
+    offeredAt: new Date(),
+  }
+
+  logger.info(
+    `[Game] Resignation offered by ${resigningPlayer.id} for ${points} point(s)`
+  )
+
+  return incrementStateVersion({
+    ...game,
+    resignationOffer: offer,
+    // as BackgammonGame: spreading the union widens players/activePlayer to
+    // their base types; the runtime shape is the same member we started from.
+  } as BackgammonGame)
+}
+
+export function canRespondToResign(
+  game: BackgammonGame,
+  player: BackgammonPlayer
+): boolean {
+  return (
+    !!game.resignationOffer &&
+    game.stateKind !== 'completed' &&
+    game.resignationOffer.offeredById !== player.id &&
+    game.players.some((p) => p.id === player.id)
+  )
+}
+
+/**
+ * Accept a pending resignation offer: the game completes at the offered
+ * points, scored exactly like a direct resignation (cube multiplier, Jacoby).
+ */
+export function acceptResign(
+  game: BackgammonGame,
+  acceptingPlayer: BackgammonPlayer
+): BackgammonGameCompleted {
+  if (!canRespondToResign(game, acceptingPlayer)) {
+    throw new Error('Cannot respond to resignation')
+  }
+  const offer = game.resignationOffer!
+  const resigningPlayer = game.players.find((p) => p.id === offer.offeredById)!
+  const cleared = {
+    ...game,
+    resignationOffer: undefined,
+    // as BackgammonGame: see offerResign — spread widens the union member.
+  } as BackgammonGame
+  return resign(cleared, resigningPlayer, offer.points)
+}
+
+/**
+ * Decline a pending resignation offer: the offer is cleared and play
+ * resumes in the state it was in when the offer was made.
+ */
+export function declineResign(
+  game: BackgammonGame,
+  decliningPlayer: BackgammonPlayer
+): BackgammonGame {
+  if (!canRespondToResign(game, decliningPlayer)) {
+    throw new Error('Cannot respond to resignation')
+  }
+
+  logger.info(
+    `[Game] Resignation declined by ${decliningPlayer.id} - play resumes`
+  )
+
+  return incrementStateVersion({
+    ...game,
+    resignationOffer: undefined,
+    // as BackgammonGame: see offerResign — spread widens the union member.
+  } as BackgammonGame)
 }
 
 /**

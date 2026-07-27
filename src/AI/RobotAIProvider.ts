@@ -1,4 +1,5 @@
 import type {
+  BackgammonGame,
   BackgammonGameMoving,
   BackgammonGameRolling,
   BackgammonPlayMoving,
@@ -54,4 +55,15 @@ export interface RobotAIProvider {
     play: BackgammonPlayMoving,
     playerUserId?: string
   ): Promise<BackgammonMoveReady | undefined>
+
+  /**
+   * Respond to a pending resignation offer (game.resignationOffer) made by
+   * the robot's opponent: 'accept' completes the game at the offered points,
+   * 'decline' resumes play. Optional -- callers treat a provider without this
+   * method as accepting (the pre-offer-flow behavior, where any resignation
+   * ended the game immediately).
+   */
+  decideResignationResponse?(
+    game: BackgammonGame
+  ): Promise<'accept' | 'decline'>
 }
