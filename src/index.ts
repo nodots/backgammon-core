@@ -66,4 +66,8 @@ export {
 export type * from '@nodots/backgammon-types'
 export { GameEventEmitter } from './events/GameEventEmitter'
 export * from './XG' // Re-enabled for Issue #213 fix - XG import with proper board state tracking
+// XGID <-> GNU position id conversion. Note that encodeGnuPositionId here is
+// on-roll-first, whereas Board's exportToGnuPositionId is opponent-first; see
+// the header comment in ./XGID for why both exist.
+export * from './XGID'
 export * from './MET'
