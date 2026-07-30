@@ -326,15 +326,15 @@ describeIf('XGID scalars against the gnubg CLI', () => {
     expect(askRaw(`${POS}:0:0:1:00:6:0:0:7:0`)).not.toBeNull()
   }, 120000)
 
-  it('round-trips a berger-dialect string through gnubg via canonical', () => {
+  it('round-trips a bgblitz-dialect string through gnubg via canonical', () => {
     // gnubg does not accept Frank's dialect, so the bridge is
-    // berger -> our parse -> canonical -> gnubg. That is the path the socket
+    // bgblitz -> our parse -> canonical -> gnubg. That is the path the socket
     // server will take, so it is the one worth proving. Money play, to keep
     // this about the dialect rather than about cube values a short match cannot
     // reach.
-    const berger = `${POS}:4:1:-1:63:0:0:0:0`
-    const asXgid: Xgid = parseXgid(berger, 'berger')
-    expect(asXgid.cubeValue).toBe(4) // literal in berger, not a logarithm
+    const bgblitz = `${POS}:4:1:-1:63:0:0:0:0`
+    const asXgid: Xgid = parseXgid(bgblitz, 'bgblitz')
+    expect(asXgid.cubeValue).toBe(4) // literal in bgblitz, not a logarithm
     const canonical = formatXgid(asXgid, 'canonical')
     expect(canonical).toBe(`${POS}:2:1:-1:63:0:0:0:0:0`) // 4 -> log2 2
     const theirs = ask(canonical)

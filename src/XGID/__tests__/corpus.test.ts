@@ -147,7 +147,7 @@ describe('exhaustive scalar corpus', () => {
     expect(checked).toBeGreaterThanOrEqual(10000)
   }, 120000)
 
-  it('round-trips the berger dialect wherever it can express the state', () => {
+  it('round-trips the bgblitz dialect wherever it can express the state', () => {
     let checked = 0
     let boardIndex = 0
     for (let cubeField = 0; cubeField <= 6; cubeField++) {
@@ -160,8 +160,8 @@ describe('exhaustive scalar corpus', () => {
             for (const [s0, s1, rules, len] of CONFIGS) {
               const pos = BOARDS[boardIndex++ % BOARDS.length]
               const text = `${pos}:${cubeValue}:${owner}:${turn}:${dice}:${s0}:${s1}:${rules}:${len}`
-              const parsed = parseXgid(text, 'berger')
-              expect(formatXgid(parsed, 'berger')).toBe(text)
+              const parsed = parseXgid(text, 'bgblitz')
+              expect(formatXgid(parsed, 'bgblitz')).toBe(text)
               // Literal, not a logarithm — the difference that silently doubles
               // every cube decision when the dialect is guessed.
               expect(parsed.cubeValue).toBe(cubeValue)
@@ -183,28 +183,28 @@ describe('exhaustive scalar corpus', () => {
           const pos = BOARDS[boardIndex++ % BOARDS.length]
           const canonical = `${pos}:${cubeField}:1:${turn}:31:${s0}:${s1}:${rules}:${len}:8`
           const viaCanonical = parseXgid(canonical, 'canonical')
-          const asBerger = formatXgid(viaCanonical, 'berger')
-          const viaBerger = parseXgid(asBerger, 'berger')
+          const asBGBlitz = formatXgid(viaCanonical, 'bgblitz')
+          const viaBGBlitz = parseXgid(asBGBlitz, 'bgblitz')
 
           const { board: b1, context: c1 } = splitXgid(viaCanonical)
-          const { board: b2, context: c2 } = splitXgid(viaBerger)
+          const { board: b2, context: c2 } = splitXgid(viaBGBlitz)
           expect(b2).toEqual(b1)
           expect({ ...c2, maxCube: undefined }).toEqual({
             ...c1,
             maxCube: undefined,
           })
           // The board survives the trip through a position id too.
-          expect(xgidToPositionId(viaBerger)).toBe(xgidToPositionId(viaCanonical))
+          expect(xgidToPositionId(viaBGBlitz)).toBe(xgidToPositionId(viaCanonical))
         }
       }
     }
   }, 60000)
 
-  it('refuses to serialize a pending double into the berger dialect', () => {
+  it('refuses to serialize a pending double into the bgblitz dialect', () => {
     for (const pos of BOARDS) {
       const doubled = parseXgid(`${pos}:0:0:1:D:0:0:0:0:0`, 'canonical')
       expect(doubled.dice).toEqual({ kind: 'doubled' })
-      expect(() => formatXgid(doubled, 'berger')).toThrow(XgidError)
+      expect(() => formatXgid(doubled, 'bgblitz')).toThrow(XgidError)
     }
   })
 })

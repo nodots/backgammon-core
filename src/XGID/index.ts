@@ -54,7 +54,7 @@ export type XgidCubeOwner = -1 | 0 | 1
  * - `canonical` — as produced by eXtreme Gammon and accepted by gnubg: ten
  *   fields after the position, cube encoded as a base-2 logarithm, trailing
  *   max-cube field present.
- * - `berger` — the dialect in Frank Berger's Open Backgammon Plugin Protocol
+ * - `bgblitz` — the dialect in Frank Berger's Open Backgammon Plugin Protocol
  *   (Draft 0.02): nine fields, cube encoded as its literal value, no max-cube,
  *   and `00` in the dice field to request a cube decision.
  *
@@ -64,7 +64,7 @@ export type XgidCubeOwner = -1 | 0 | 1
  * has no solution. Worse, the corruption is invisible in checker-play tests,
  * because cube value barely affects best checker play.
  */
-export type XgidDialect = 'canonical' | 'berger'
+export type XgidDialect = 'canonical' | 'bgblitz'
 
 /** What the dice field was carrying. */
 export type XgidDiceState =
@@ -72,7 +72,7 @@ export type XgidDiceState =
   | { kind: 'roll'; dice: [number, number] }
   /** A double has been offered; the player facing it is to decide. Canonical `D`. */
   | { kind: 'doubled' }
-  /** No roll: the player on roll is to make a cube decision. Berger `00`. */
+  /** No roll: the player on roll is to make a cube decision. BGBlitz `00`. */
   | { kind: 'cube-decision' }
 
 /** A parsed XGID. */
@@ -358,8 +358,8 @@ function formatPositionField(board: XgidBoard): string {
 
 function parseDice(field: string, dialect: XgidDialect): XgidDiceState {
   if (field === 'D') {
-    if (dialect === 'berger') {
-      fail("the berger dialect has no 'D' dice value; see Draft 0.02 §5.2")
+    if (dialect === 'bgblitz') {
+      fail("the bgblitz dialect has no 'D' dice value; see Draft 0.02 §5.2")
     }
     return { kind: 'doubled' }
   }
@@ -376,9 +376,9 @@ function formatDice(dice: XgidDiceState, dialect: XgidDialect): string {
     case 'roll':
       return `${dice.dice[0]}${dice.dice[1]}`
     case 'doubled':
-      if (dialect === 'berger') {
+      if (dialect === 'bgblitz') {
         fail(
-          "the berger dialect cannot express a pending double; see Draft 0.02 §5.2"
+          "the bgblitz dialect cannot express a pending double; see Draft 0.02 §5.2"
         )
       }
       return 'D'
@@ -387,7 +387,7 @@ function formatDice(dice: XgidDiceState, dialect: XgidDialect): string {
   }
 }
 
-const FIELD_COUNT: Record<XgidDialect, number> = { canonical: 10, berger: 9 }
+const FIELD_COUNT: Record<XgidDialect, number> = { canonical: 10, bgblitz: 9 }
 
 /**
  * Parse an XGID.

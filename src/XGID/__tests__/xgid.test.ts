@@ -89,7 +89,7 @@ describe('position id', () => {
 describe('XGID parsing', () => {
   // The worked example from Open Backgammon Plugin Protocol Draft 0.02.
   const CANONICAL = 'XGID=-a-B--E-B-a-dDB--b-bcb----:1:1:-1:63:0:0:0:3:8'
-  const BERGER = '-a-B--E-B-a-dDB--b-bcb----:2:1:-1:63:0:0:0:3'
+  const BGBLITZ = '-a-B--E-B-a-dDB--b-bcb----:2:1:-1:63:0:0:0:3'
 
   it('parses the canonical worked example', () => {
     const xgid = parseXgid(CANONICAL, 'canonical')
@@ -109,13 +109,13 @@ describe('XGID parsing', () => {
     expect(board[1].reduce((a, b) => a + b, 0)).toBe(15)
   })
 
-  it("reproduces Draft 0.02's stated canonical-to-berger conversion", () => {
+  it("reproduces Draft 0.02's stated canonical-to-bgblitz conversion", () => {
     const xgid = parseXgid(CANONICAL, 'canonical')
-    expect(formatXgid(xgid, 'berger')).toBe(BERGER)
+    expect(formatXgid(xgid, 'bgblitz')).toBe(BGBLITZ)
   })
 
-  it('the berger dialect reads the cube field literally', () => {
-    expect(parseXgid(BERGER, 'berger').cubeValue).toBe(2)
+  it('the bgblitz dialect reads the cube field literally', () => {
+    expect(parseXgid(BGBLITZ, 'bgblitz').cubeValue).toBe(2)
   })
 
   it('the same field means different cubes in the two dialects', () => {
@@ -123,15 +123,15 @@ describe('XGID parsing', () => {
       `${'-'.repeat(26)}:2:0:1:31:0:0:0:0:0`,
       'canonical'
     )
-    const berger = parseXgid(`${'-'.repeat(26)}:2:0:1:31:0:0:0:0`, 'berger')
+    const bgblitz = parseXgid(`${'-'.repeat(26)}:2:0:1:31:0:0:0:0`, 'bgblitz')
     expect(canonical.cubeValue).toBe(4)
-    expect(berger.cubeValue).toBe(2)
+    expect(bgblitz.cubeValue).toBe(2)
   })
 
   it('round-trips both dialects', () => {
     const cases: Array<[string, XgidDialect]> = [
       [CANONICAL.slice('XGID='.length), 'canonical'],
-      [BERGER, 'berger'],
+      [BGBLITZ, 'bgblitz'],
     ]
     for (const [text, dialect] of cases) {
       expect(formatXgid(parseXgid(text, dialect), dialect)).toBe(text)
@@ -205,12 +205,12 @@ describe('dice field', () => {
     expect(canonical('00').dice).toEqual({ kind: 'cube-decision' })
   })
 
-  it("the berger dialect has no 'D' — Draft 0.02 cannot express a pending double", () => {
-    expect(() => parseXgid(`${pos}:1:0:1:D:0:0:0:0`, 'berger')).toThrow(
+  it("the bgblitz dialect has no 'D' — Draft 0.02 cannot express a pending double", () => {
+    expect(() => parseXgid(`${pos}:1:0:1:D:0:0:0:0`, 'bgblitz')).toThrow(
       XgidError
     )
     expect(() =>
-      formatXgid({ ...canonical('D'), cubeValue: 1 }, 'berger')
+      formatXgid({ ...canonical('D'), cubeValue: 1 }, 'bgblitz')
     ).toThrow(XgidError)
   })
 
@@ -227,7 +227,7 @@ describe('field-count and range validation', () => {
     expect(() => parseXgid(`${pos}:0:0:1:31:0:0:0:0`, 'canonical')).toThrow(
       XgidError
     )
-    expect(() => parseXgid(`${pos}:0:0:1:31:0:0:0:0:0`, 'berger')).toThrow(
+    expect(() => parseXgid(`${pos}:0:0:1:31:0:0:0:0:0`, 'bgblitz')).toThrow(
       XgidError
     )
   })
@@ -257,7 +257,7 @@ describe('field-count and range validation', () => {
   })
 
   it('rejects a cube value that is not a power of two', () => {
-    expect(() => parseXgid(`${pos}:3:0:1:31:0:0:0:0`, 'berger')).toThrow(
+    expect(() => parseXgid(`${pos}:3:0:1:31:0:0:0:0`, 'bgblitz')).toThrow(
       XgidError
     )
   })
