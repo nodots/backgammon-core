@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, test, jest, beforeEach, afterEach } from '@jest/globals'
-import { PerformanceRatingCalculator, setAiModuleForTesting, AiModuleInterface } from '../PerformanceRatingCalculator'
+import { PerformanceRatingCalculator, setAiModuleForTesting, AiModuleInterface, ANALYSIS_HINTS_CONFIG } from '../PerformanceRatingCalculator'
 
 // Create mock AI module for testing
 const createMockAiModule = (overrides: Partial<AiModuleInterface> = {}): AiModuleInterface => ({
@@ -225,6 +225,37 @@ describe('PerformanceRatingCalculator', () => {
       // Player 1 made 2 moves, Player 2 made 1 move
       expect(result.playerResults['player1']?.totalMoves).toBe(2)
       expect(result.playerResults['player2']?.totalMoves).toBe(1)
+    })
+
+    test('re-asserts the full analysis config on every run', async () => {
+      // Regression: the engine config is a process-global that robot turns
+      // overwrite with per-robot skill settings. Analysis must pin its own
+      // complete config each run or it inherits the robot's.
+      const configureMock = jest
+        .fn<(config: Record<string, unknown>) => Promise<void>>()
+        .mockResolvedValue(undefined)
+      const moduleWithConfigure = createMockAiModule()
+      moduleWithConfigure.gnubgHints.configure = configureMock
+      setAiModuleForTesting(moduleWithConfigure)
+
+      await calculator.calculateGamePR('test-game', [], [])
+      await calculator.calculateGamePR('test-game', [], [])
+
+      expect(configureMock).toHaveBeenCalledTimes(2)
+      expect(configureMock).toHaveBeenCalledWith(ANALYSIS_HINTS_CONFIG)
+      // The config must be complete: partial configs merge into whatever the
+      // previous engine caller left behind.
+      expect(ANALYSIS_HINTS_CONFIG).toEqual({
+        evalPlies: 2,
+        moveFilter: 4,
+        usePruning: true,
+        noise: 0,
+      })
+    })
+
+    test('tolerates an ai module without configure', async () => {
+      const result = await calculator.calculateGamePR('test-game', [], [])
+      expect(result.analysisComplete).toBe(true)
     })
   })
 })
