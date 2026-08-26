@@ -8,6 +8,14 @@ export interface AiModuleInterface {
   gnubgHints: {
     isAvailable: () => Promise<boolean>
     getBuildInstructions: () => string
+    // The engine config is a mutable process-global shared with robot turn
+    // execution; analysis must be able to re-assert its own config per run.
+    configure?: (config: {
+      evalPlies?: number
+      moveFilter?: number
+      usePruning?: boolean
+      noise?: number
+    }) => void | Promise<void>
     getMoveHints: (request: any, maxHints?: number) => Promise<MoveHint[]>
     // Prefer positionId-based hints when available to match robot path
     getHintsFromPositionId?: (
@@ -22,6 +30,18 @@ export interface AiModuleInterface {
     request: any
   }
 }
+
+// Engine settings PR analysis runs at, independent of any robot's skill
+// config. 2-ply, deterministic, with the widest move filter (numeric value of
+// MoveFilterSetting.Huge — not imported to keep @nodots/gnubg-hints a
+// type-only dependency). Matches what the api's pr routes have historically
+// configured.
+export const ANALYSIS_HINTS_CONFIG = {
+  evalPlies: 2,
+  moveFilter: 4,
+  usePruning: true,
+  noise: 0,
+} as const
 
 // Lazy-loaded ai module reference
 let aiModule: AiModuleInterface | null = null
@@ -144,6 +164,15 @@ export class PerformanceRatingCalculator {
           `${ai.gnubgHints.getBuildInstructions()}\n\nGNU Backgammon hints are required for performance rating analysis.`
         )
       }
+
+      // Re-assert the analysis config for every run. The engine config is a
+      // process-global that robot turns overwrite with per-robot skill
+      // settings; without this, a game against "GNU Beginner" would be
+      // analyzed at the robot's weakened settings (or the robot's play
+      // analyzed by the exact engine call that chose it, yielding PR 0.0).
+      // The config must be complete — partial configs merge into whatever
+      // the previous caller left behind.
+      await ai.gnubgHints.configure?.(ANALYSIS_HINTS_CONFIG)
 
       const playerStats: Record<string, PlayerPR> = {}
 
