@@ -36,7 +36,6 @@ This directory contains the organized rules and guidelines for the Nodots Backga
 
 **WORKFLOW:**
 
-- Regular status updates every 15-30 seconds
 - Always kill API server before starting
 - Verify directory before running commands
 - All tests must pass before completion

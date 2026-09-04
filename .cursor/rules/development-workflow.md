@@ -1,22 +1,6 @@
 # Development Workflow Rules
 
-## Status Updates and Communication
-
-### Regular Status Updates
-
-Provide status updates every 15 seconds during long-running tasks or operations. Each update MUST include:
-
-- 🕒 Timestamp in format "**[HH:MM:SS] UPDATE #N**"
-- Current task/operation being performed
-- Progress indicators or completion status
-- Any issues encountered
-- Next steps planned
-
-This keeps the user informed and prevents confusion about task progress.
-
-### Notification Requirements
-
-Update status in the chat window at a minimum every 30 seconds. If you are stuck, interrupt after 3 iterations.
+## Communication
 
 ### Stuck Detection
 
@@ -29,6 +13,18 @@ If I spend more than 2 minutes on infrastructure issues, debugging environment p
 This prevents wasting time on tangential issues and keeps focus on the main objective.
 
 ## Testing and Quality Assurance
+
+### Write the Failing Test First
+
+The test is written before the fix and must fail against the pre-change tree, then pass after. A test written against already-fixed code proves the code runs, not that the bug is gone. Every bug fix ships a regression fixture built from the real failing input — the production position ID or payload, not an approximation of one.
+
+Never gate a test behind an environment flag nothing sets: a suite that has never executed is not a gate. Read the skip count as a finding — this package's suites differ by machine (the CI runner passes the native addon suites and skips the gnubg-binary suites; the Linux box is the reverse), so neither environment runs everything and no single run justifies a coverage claim.
+
+TypeScript compilation errors in tests are test failures. Fix them, never exclude them.
+
+### Declared Dependency Ranges
+
+Code using a new `@nodots/backgammon-types` symbol needs the declared **range** bumped, not just a lockfile refresh. A range that still satisfies the old locked version means npm never moves, `npm ci` obeys the lock, and CI dies in `tsc` while developer machines pass on a hand-refreshed tree. This package's `development` branch was red for three days in July 2026 for exactly this reason. `npm install --package-lock-only` cannot fix it — change the range.
 
 ### Test Requirements
 
